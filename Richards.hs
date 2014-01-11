@@ -1,7 +1,11 @@
 module Richards where
 
-intervalAt :: Int -> Double
-intervalAt t = richards a k b v q m t
+import Data.Castable (cast)
+import Data.Time.Clock
+
+-- | Given a Score, get the interval in minutes.
+intervalAt :: Int -> NominalDiffTime
+intervalAt = cast . secondsToDiffTime . floor . (*60) . richards a k b v q m
   where
     -- Lower asymtote
     a = 1
