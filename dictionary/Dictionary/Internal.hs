@@ -1,12 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
 module Dictionary.Internal where
 
 import           Control.Monad              (mzero)
 import           Control.Applicative
 import           Data.Aeson
+import           Data.Char                  (chr)
 import           Data.List                  (dropWhileEnd)
 import           Network.HTTP               (getRequest, getResponseBody, simpleHTTP)
+import           Numeric                    (readHex)
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 -- | Write response json to the specified file for inspection.
@@ -17,9 +19,9 @@ writeResponseDebug word path = do
     writeFile path contents
 
 getResponse :: String -> IO (Either String Response)
-getResponse word =
+getResponse word = do
     let url = "http://www.google.com/dictionary/json?callback=a&sl=en&tl=en&q=" ++ word
-    in eitherDecode . BS.pack . fixBadHexEscapes . trimResponse <$> getJson url
+    fmap (decodeHex . trimResponse) (getJson url) >>= maybe badContents goodContents
   where
     -- | Trim off the boiler plate callback characters, because JSONP is returned.
     -- Hard-code "2" because "callback=a" is also hard-coded, so the first two
@@ -27,11 +29,19 @@ getResponse word =
     trimResponse :: String -> String
     trimResponse = dropWhileEnd (/= '}') . drop 2
 
--- | Change "\x" to "\\x" cause Google is dumb. This is super slow.
-fixBadHexEscapes :: String -> String
-fixBadHexEscapes ('\\':'x':xs) = "\\\\x" ++ fixBadHexEscapes xs
-fixBadHexEscapes (x:xs) = x : fixBadHexEscapes xs
-fixBadHexEscapes [] = []
+    badContents :: IO (Either String Response)
+    badContents = return (Left "invalid hex code encountered")
+
+    goodContents :: String -> IO (Either String Response)
+    goodContents = return . eitherDecode . BS.pack
+
+decodeHex :: String -> Maybe String
+decodeHex ('\\':'x':x:y:ys) =
+    case readHex [x,y] of
+        [(n,"")] -> fmap (chr n :) (decodeHex ys)
+        _ -> Nothing
+decodeHex (x:xs) = fmap (x:) (decodeHex xs)
+decodeHex [] = Just []
 
 getJson :: String -> IO String
 getJson url = simpleHTTP (getRequest url) >>= getResponseBody
