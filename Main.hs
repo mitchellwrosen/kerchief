@@ -34,8 +34,11 @@ doAddCard deck = do
 
     pickDefinition' :: Entry -> [(Int,String)] -> IO ()
     pickDefinition' _     [(0,"")] = print "No card added."
-    pickDefinition' entry [(n,"")] = maybe (pickDefinition entry) doAddCard' (nthEntry n entry)
-    pickDefinition' entry _        = print "Please pick a valid integer." >> pickDefinition entry
+    pickDefinition' entry [(n,"")] = maybe (bad entry) doAddCard' (nthEntry n entry)
+    pickDefinition' entry _        = bad entry
+
+    bad :: Entry -> IO ()
+    bad entry = print "Please pick a valid integer" >> pickDefinition entry
 
     doAddCard' :: (String, String) -> IO ()
     doAddCard' (front,back) = addNewCard front back deck >> print "Card added."
