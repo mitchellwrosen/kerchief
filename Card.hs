@@ -2,12 +2,13 @@
 
 module Card where
 
-import Control.Arrow        ((&&&))
+import Control.Arrow       ((&&&))
 import Control.Applicative
 import Control.Lens
+import Data.Monoid         ((<>))
 import Data.Time.Clock
 
-import Dictionary (Entry, entryData, entryWord)
+import Dictionary          (Entry, entryData, entryWord)
 import Richards
 
 data Feedback = Wrong | Hard | Easy
@@ -24,6 +25,9 @@ makeLenses ''Card
 -- | Compare cards on their contents, not score or timestamp.
 instance Eq Card where
     (Card f1 b1 _ _) == (Card f2 b2 _ _) = f1 == f2 && b1 == b2
+
+instance Ord Card where
+    compare (Card f1 b1 _ _) (Card f2 b2 _ _) = compare f1 f2 <> compare b1 b2
 
 -- | Determine if a card is due for studying.
 isDue :: Card -> IO Bool

@@ -34,7 +34,7 @@ doAddCard deck = do
 
     pickDefinition' :: Entry -> [(Int,String)] -> IO ()
     pickDefinition' _     [(0,"")] = putStrLn "No card added."
-    pickDefinition' entry [(n,"")] = maybe (bad entry) doAddCard' (nthEntry n entry)
+    pickDefinition' entry [(n,"")] = maybe (bad entry) doAddCard' (nthEntry (n-1) entry)
     pickDefinition' entry _        = bad entry
 
     bad :: Entry -> IO ()
