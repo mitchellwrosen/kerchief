@@ -2,12 +2,12 @@
 
 module Main where
 
-import Control.Monad        (forever)
-import Control.Monad.Extras (whenMaybe)
+import Control.Monad          (forever)
+import Control.Monad.Extras   (whenMaybe)
 
-import Card                 (nthEntry)
-import Deck                 (Deck, addNewCard, newDeck, printDeck)
-import Dictionary           (Entry, lookupWord)
+import Card                   (nthEntry)
+import Deck                   (Deck, addNewCard, newDeck, printDeck)
+import Data.Dictionary.Google (Entry, lookupWord)
 
 main :: IO ()
 main = do

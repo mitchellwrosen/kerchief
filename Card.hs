@@ -2,13 +2,13 @@
 
 module Card where
 
-import Control.Arrow       ((&&&))
+import Control.Arrow          ((&&&))
 import Control.Applicative
 import Control.Lens
-import Data.Monoid         ((<>))
+import Data.Monoid            ((<>))
 import Data.Time.Clock
 
-import Dictionary          (Entry, entryData, entryWord)
+import Data.Dictionary.Google (Entry(..))
 import Richards
 
 data Feedback = Wrong | Hard | Easy
@@ -68,7 +68,7 @@ nthEntry n entry
     | n >= length ds = Nothing
     | otherwise      = Just (front, back)
   where
-    ds         = entry ^. entryData
-    word       = entry ^. entryWord
+    ds         = entryData entry
+    word       = entryWord entry
     front      = word ++ " (" ++ pos ++ ")"
     (pos,back) = ds !! n
