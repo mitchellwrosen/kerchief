@@ -2,52 +2,52 @@
 
 module Deck where
 
-import Control.Lens
-import Control.Monad
-import Data.Time.Clock
+import Control.Concurrent.STM
+import Control.Monad.Extras   (partitionM)
+import Data.List              (delete)
 
-import Richards
-
-data Card = Card
-    { cardFront       :: String
-    , cardBack        :: String
-    , cardScore       :: Int
-    , cardLastStudied :: UTCTime
-    }
+import Card
 
 data Deck = Deck
-    { _deckName           :: String
-    , _deckUnstudiedCards :: [Card]
-    , _deckStudiedCards   :: [Card]
+    { deckName      :: String
+    , deckDueCards  :: TVar [Card]
+    , deckDoneCards :: TVar [Card]
     }
 
-makeLenses ''Deck
-
-instance Eq Card where
-    (Card f1 b1 _ _) == (Card f2 b2 _ _) = f1 == f2 && b1 == b2
-
-shouldBeStudied :: Card -> IO Bool
-shouldBeStudied (Card _ _ score lastStudied) = do
-    now <- getCurrentTime
-    return $ diffUTCTime now lastStudied > intervalAt score
-
 -- | Update a deck to reflect the current time, by moving the appropriate cards
--- from deckStudiedCards to deckUnstudiedCards.
-updateDeck :: Deck -> IO Deck
-updateDeck deck = do
-    (ts,fs) <- partitionM shouldBeStudied (deck ^. deckStudiedCards)
-    return $ deck &
-        (deckUnstudiedCards %~ (++ ts)) .
-        (deckStudiedCards   .~ fs)
+-- from done to due.
+--
+-- Not thread safe, because determining if a card is due for studying must be
+-- in IO (getCurrentTime).
+updateDeck :: Deck -> IO ()
+updateDeck (Deck _ tdueCards tdoneCards) = do
+    (ts,fs) <- readTVarIO tdoneCards >>= partitionM isDue
+    atomically $ do
+        modifyTVar tdueCards (++ts)
+        writeTVar tdoneCards fs
 
-partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
-partitionM p = foldM (select p) ([],[])
+-- | Add a card to the deck.
+addCard :: Deck -> Card -> STM ()
+addCard (Deck _ dueCards _) card = modifyTVar dueCards (card:)
 
-select :: Monad m => (a -> m Bool) -> ([a],[a]) -> a -> m ([a],[a])
-select p (ts,fs) x =
-    ifM (p x)
-        (return ((x:ts),fs))
-        (return (ts,(x:fs)))
+-- | Convenience method, combination of newCard and addCard.
+addNewCard :: String -> String -> Deck -> IO ()
+addNewCard front back deck = newCard front back >>= atomically . addCard deck
 
-ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM mb t f = mb >>= \b -> if b then t else f
+-- | Convenience method, combination of newTwoWayCard and addCard.
+addNewTwoWayCard :: String -> String -> Deck -> IO ()
+addNewTwoWayCard front back deck = do
+    (c1,c2) <- newTwoWayCard front back
+    atomically $ do
+        addCard deck c1
+        addCard deck c2
+
+-- | Study a card, which updates its timestamp and moves it from due to done.
+--
+-- Not thread safe, because updating a card's timestamp is in IO.
+studyCard :: Feedback -> Card -> Deck -> IO ()
+studyCard feedback card (Deck _ tdueCards tdoneCards) = do
+    card' <- updateCard feedback card
+    atomically $ do
+        modifyTVar tdueCards (delete card') -- assumes card exists in due
+        modifyTVar tdoneCards (card':)
