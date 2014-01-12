@@ -7,6 +7,7 @@ import Control.Applicative
 import Control.Lens
 import Data.Time.Clock
 
+import Dictionary (Entry, entryData, entryWord)
 import Richards
 
 data Feedback = Wrong | Hard | Easy
@@ -16,7 +17,7 @@ data Card = Card
     , _cardBack        :: String
     , _cardScore       :: Int
     , _cardLastStudied :: UTCTime
-    }
+    } deriving Show
 
 makeLenses ''Card
 
@@ -55,3 +56,15 @@ updateCard feedback card = do
     score Wrong = const 0 -- wrong guess resets score to zero
     score Hard  = succ
     score Easy  = succ . succ
+
+-- | Create front/back text from the nth entry. Return Nothing if the index
+-- is out of bounds.
+nthEntry :: Int -> Entry -> Maybe (String, String)
+nthEntry n entry
+    | n >= length ds = Nothing
+    | otherwise      = Just (front, back)
+  where
+    ds         = entry ^. entryData
+    word       = entry ^. entryWord
+    front      = word ++ " (" ++ pos ++ ")"
+    (pos,back) = ds !! n

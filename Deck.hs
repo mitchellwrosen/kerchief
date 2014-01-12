@@ -2,6 +2,7 @@
 
 module Deck where
 
+import Control.Applicative
 import Control.Concurrent.STM
 import Control.Monad.Extras   (partitionM)
 import Data.List              (delete)
@@ -12,7 +13,10 @@ data Deck = Deck
     { deckName      :: String
     , deckDueCards  :: TVar [Card]
     , deckDoneCards :: TVar [Card]
-    }
+    } 
+
+newDeck :: String -> IO Deck
+newDeck name = Deck name <$> newTVarIO [] <*> newTVarIO []
 
 -- | Update a deck to reflect the current time, by moving the appropriate cards
 -- from done to due.
@@ -51,3 +55,9 @@ studyCard feedback card (Deck _ tdueCards tdoneCards) = do
     atomically $ do
         modifyTVar tdueCards (delete card') -- assumes card exists in due
         modifyTVar tdoneCards (card':)
+
+printDeck :: Deck -> IO ()
+printDeck (Deck name tdueCards tdoneCards) = do
+    dueCards <- readTVarIO tdueCards
+    doneCards <- readTVarIO tdoneCards
+    print $ "Name: " ++ name ++ ", Due: " ++ show dueCards ++ ", Done: " ++ show doneCards

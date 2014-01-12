@@ -1,15 +1,16 @@
 {-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 
 module Dictionary
-    ( lookupWord
+    ( Entry
+    , entryData
+    , entryWord
+    , lookupWord
     , lookupWordDebug
     ) where
 
 import           Control.Lens
 import           Data.Maybe  (catMaybes)
 import           Data.Monoid (First(..), mconcat)
-import           Data.Set    (Set)
-import qualified Data.Set    as S
 
 import Dictionary.Internal
 
@@ -18,13 +19,13 @@ type Definition = String
 
 data Entry = Entry
     { _entryWord :: String
-    , _entryData :: Set (PartOfSpeech, Definition)
+    , _entryData :: [(PartOfSpeech, Definition)]
     }
 
 makeLenses ''Entry
 
 instance Show Entry where
-    show = unlines . show' 1 . S.toList . _entryData
+    show = unlines . show' 1 . _entryData
       where
         show' :: Int -> [(PartOfSpeech, Definition)] -> [String]
         show' n ((pos,def):xs) = (show n ++ ". (" ++ pos ++ ") " ++ def) : show' (n+1) xs
@@ -43,14 +44,14 @@ makeEntry :: String -> Response -> Entry
 makeEntry word = makeEntryFromPrimaries word . responsePrimaries
 
 makeEntryFromPrimaries :: String -> [Primary] -> Entry
-makeEntryFromPrimaries word = foldr step (Entry word S.empty)
+makeEntryFromPrimaries word = foldr step (Entry word [])
   where
     step :: Primary -> Entry -> Entry
     step (Primary pentries terms _) =
         let pos = primaryTermsToPartOfSpeech terms
             defs = pentriesToDefinitions pentries
-            s = S.fromList [(pos,d) | d <- defs]
-        in entryData %~ S.union s
+            s = [(pos,d) | d <- defs]
+        in entryData %~ (++s)
 
 primaryTermsToPartOfSpeech :: [Term] -> PartOfSpeech
 primaryTermsToPartOfSpeech = maybe (error "primaryTermsToPartOfSpeech: no part of speech found") id . f
