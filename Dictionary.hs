@@ -1,10 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 
 module Dictionary
     ( lookupWord
     , lookupWordDebug
     ) where
 
+import           Control.Lens
 import           Data.Maybe  (catMaybes)
 import           Data.Monoid (First(..), mconcat)
 import           Data.Set    (Set)
@@ -12,39 +13,44 @@ import qualified Data.Set    as S
 
 import Dictionary.Internal
 
-newtype Entry = Entry { unEntry :: Set (PartOfSpeech, Definition) }
+type PartOfSpeech = String
+type Definition = String
+
+data Entry = Entry
+    { _entryWord :: String
+    , _entryData :: Set (PartOfSpeech, Definition)
+    }
+
+makeLenses ''Entry
 
 instance Show Entry where
-    show = unlines . show' 1 . S.toList . unEntry
+    show = unlines . show' 1 . S.toList . _entryData
       where
         show' :: Int -> [(PartOfSpeech, Definition)] -> [String]
         show' n ((pos,def):xs) = (show n ++ ". (" ++ pos ++ ") " ++ def) : show' (n+1) xs
         show' _ [] = []
 
-type PartOfSpeech = String
-type Definition = String
-
 lookupWord :: String -> IO (Maybe Entry)
-lookupWord = lookupWord' (const Nothing) (Just . makeEntry)
+lookupWord word = lookupWord' (const Nothing) (Just . makeEntry word) word
 
 lookupWordDebug :: String -> IO (Either String Entry)
-lookupWordDebug = lookupWord' Left (Right . makeEntry)
+lookupWordDebug word = lookupWord' Left (Right . makeEntry word) word
 
 lookupWord' :: (String -> a) -> (Response -> a) -> String -> IO a
 lookupWord' left right = fmap (either left right) . getResponse
 
-makeEntry :: Response -> Entry
-makeEntry = makeEntryFromPrimaries . responsePrimaries
+makeEntry :: String -> Response -> Entry
+makeEntry word = makeEntryFromPrimaries word . responsePrimaries
 
-makeEntryFromPrimaries :: [Primary] -> Entry
-makeEntryFromPrimaries = foldr step (Entry S.empty)
+makeEntryFromPrimaries :: String -> [Primary] -> Entry
+makeEntryFromPrimaries word = foldr step (Entry word S.empty)
   where
     step :: Primary -> Entry -> Entry
     step (Primary pentries terms _) =
         let pos = primaryTermsToPartOfSpeech terms
             defs = pentriesToDefinitions pentries
             s = S.fromList [(pos,d) | d <- defs]
-        in Entry . S.union s . unEntry
+        in entryData %~ S.union s
 
 primaryTermsToPartOfSpeech :: [Term] -> PartOfSpeech
 primaryTermsToPartOfSpeech = maybe (error "primaryTermsToPartOfSpeech: no part of speech found") id . f
