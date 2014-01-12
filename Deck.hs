@@ -13,7 +13,7 @@ data Deck = Deck
     { deckName      :: String
     , deckDueCards  :: TVar [Card]
     , deckDoneCards :: TVar [Card]
-    } 
+    }
 
 newDeck :: String -> IO Deck
 newDeck name = Deck name <$> newTVarIO [] <*> newTVarIO []
