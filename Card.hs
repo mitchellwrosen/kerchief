@@ -18,8 +18,7 @@ data Card = Card
     , _cardBack        :: String
     , _cardScore       :: Int
     , _cardLastStudied :: UTCTime
-    } deriving Show
-
+    }
 makeLenses ''Card
 
 -- | Compare cards on their contents, not score or timestamp.
@@ -28,6 +27,9 @@ instance Eq Card where
 
 instance Ord Card where
     compare (Card f1 b1 _ _) (Card f2 b2 _ _) = compare f1 f2 <> compare b1 b2
+
+instance Show Card where
+    show (Card front back _ _) = "[Front] " ++ front ++ " [Back] " ++ back
 
 -- | Determine if a card is due for studying.
 isDue :: Card -> IO Bool
@@ -65,8 +67,8 @@ updateCard feedback card = do
 -- is out of bounds.
 nthEntry :: Int -> Entry -> Maybe (String, String)
 nthEntry n entry
-    | n >= length ds = Nothing
-    | otherwise      = Just (front, back)
+    | n < 0 || n >= length ds = Nothing
+    | otherwise               = Just (front, back)
   where
     ds         = entryData entry
     word       = entryWord entry

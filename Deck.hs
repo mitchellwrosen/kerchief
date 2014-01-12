@@ -5,6 +5,7 @@ module Deck where
 import           Control.Applicative
 import           Control.Concurrent.STM
 import           Control.Monad.Extras   (partitionM)
+import           Data.Monoid            ((<>))
 import           Data.Set               (Set)
 import qualified Data.Set               as S
 
@@ -22,7 +23,7 @@ newDeck name = Deck name <$> newTVarIO S.empty <*> newTVarIO S.empty
 -- | Update a deck to reflect the current time, by moving the appropriate cards
 -- from done to due.
 --
--- Super slow because of toList/fromList - it would be nice to use a 
+-- Super slow because of toList/fromList - it would be nice to use a
 -- partitionM on Sets but the implementation is hidden.
 --
 -- Not thread safe, because determining if a card is due for studying must be
@@ -50,6 +51,21 @@ addNewTwoWayCard front back deck = do
         addCard deck c1
         addCard deck c2
 
+removeCard :: Deck -> Card -> STM ()
+removeCard = undefined
+
+removeDueCard :: Deck -> Card -> STM ()
+removeDueCard = undefined
+
+removeNthDueCard :: Deck -> Int -> STM ()
+removeNthDueCard = undefined
+
+removeDoneCard :: Deck -> Card -> STM ()
+removeDoneCard = undefined
+
+removeNthDoneCard :: Deck -> Int -> STM ()
+removeNthDoneCard = undefined
+
 -- | Study a card, which updates its timestamp and moves it from due to done.
 --
 -- Not thread safe, because updating a card's timestamp is in IO.
@@ -60,8 +76,12 @@ studyCard feedback card (Deck _ tdueCards tdoneCards) = do
         modifyTVar tdueCards (S.delete card') -- assumes card exists in due
         modifyTVar tdoneCards (S.insert card')
 
-printDeck :: Deck -> IO ()
-printDeck (Deck name tdueCards tdoneCards) = do
-    dueCards <- readTVarIO tdueCards
+-- | Print cards, sorted alphabetically.
+printDeckCards :: Deck -> IO ()
+printDeckCards (Deck _ tdueCards tdoneCards) = do
+    dueCards  <- readTVarIO tdueCards
     doneCards <- readTVarIO tdoneCards
-    print $ "Name: " ++ name ++ ", Due: " ++ show dueCards ++ ", Done: " ++ show doneCards
+    p $ S.toDescList $ dueCards <> doneCards
+  where
+    p :: [Card] -> IO ()
+    p = mapM_ (\(n,c) -> putStrLn (show n ++ ". " ++ show c)) . zip ([1..] :: [Int])

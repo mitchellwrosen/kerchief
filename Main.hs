@@ -1,44 +1,27 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns #-}
 
 module Main where
 
-import Control.Monad          (forever)
-import Control.Monad.Extras   (whenMaybe)
+import Control.Monad       (forever)
+import Control.Monad.Trans (liftIO)
+import System.IO           (hFlush, stdout)
 
-import Card                   (nthEntry)
-import Deck                   (Deck, addNewCard, newDeck, printDeck)
-import Data.Dictionary.Google (Entry, lookupWord)
+import Deck                (newDeck)
+import Handler             (handleInput)
+import Kerchief            (runKerchief, useDeck)
 
 main :: IO ()
-main = do
-    deck <- newDeck "test"
-    loop deck
-  where
-    loop :: Deck -> IO ()
-    loop deck = forever $ do
-        putStrLn "1 - add card, 2 - print cards"
-        getLine >>= \case
-            "1" -> doAddCard deck
-            "2" -> printDeck deck
-            _   -> return ()
+main = runKerchief $ do
+    liftIO (newDeck "test deck") >>= useDeck
+    liftIO printHelp
+    forever $
+        liftIO (prompt "[~] $ ") >>= handleInput
 
-doAddCard :: Deck -> IO ()
-doAddCard deck = do
-    putStrLn "What word?"
-    getLine >>= lookupWord >>= whenMaybe (\entry -> print entry >> pickDefinition entry)
-  where
-    pickDefinition :: Entry -> IO ()
-    pickDefinition entry = do
-        putStrLn "Which definition? (0 = none)"
-        fmap reads getLine >>= pickDefinition' entry
+printHelp :: IO ()
+printHelp = mapM_ putStrLn
+    [ "Kerchief by MitchellSalad"
+    , "Type \"ls\" to get started. \"exit\" to exit."
+    ]
 
-    pickDefinition' :: Entry -> [(Int,String)] -> IO ()
-    pickDefinition' _     [(0,"")] = putStrLn "No card added."
-    pickDefinition' entry [(n,"")] = maybe (bad entry) doAddCard' (nthEntry (n-1) entry)
-    pickDefinition' entry _        = bad entry
-
-    bad :: Entry -> IO ()
-    bad entry = putStrLn "Please pick a valid integer" >> pickDefinition entry
-
-    doAddCard' :: (String, String) -> IO ()
-    doAddCard' (front,back) = addNewCard front back deck >> putStrLn "Card added."
+prompt :: String -> IO String
+prompt s = putStr s >> hFlush stdout >> getLine
