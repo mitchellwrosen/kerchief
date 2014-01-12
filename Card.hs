@@ -26,9 +26,13 @@ instance Eq Card where
 
 -- | Determine if a card is due for studying.
 isDue :: Card -> IO Bool
-isDue (Card _ _ score lastStudied) = do
+isDue card = do
     now <- getCurrentTime
-    return $ diffUTCTime now lastStudied > intervalAt score
+    return $ diffUTCTime now (card ^. cardLastStudied) > cardInterval card
+
+-- | Calculate the interval after which a card is due.
+cardInterval :: Card -> NominalDiffTime
+cardInterval (Card _ _ score _) = intervalAt score
 
 -- | Create a new card.
 newCard :: String -> String -> IO Card
@@ -48,6 +52,6 @@ updateCard feedback card = do
         (cardLastStudied .~ now)
   where
     score :: Feedback -> Int -> Int
-    score Wrong = pred
+    score Wrong = const 0 -- wrong guess resets score to zero
     score Hard  = succ
     score Easy  = succ . succ

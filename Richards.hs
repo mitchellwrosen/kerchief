@@ -1,24 +1,19 @@
+-- | Carefully tuned sigmoid function
 module Richards where
 
 import Data.Castable (cast)
 import Data.Time.Clock
 
--- | Given a Score, get the interval in minutes.
+-- | Given a score, get the interval in minutes.
 intervalAt :: Int -> NominalDiffTime
 intervalAt = cast . secondsToDiffTime . floor . (*60) . richards a k b v q m
   where
-    -- Lower asymtote
-    a = 1
-    -- Upper asymtote
-    k = 262974 -- 6 months in minutes
-    -- Growth rate
-    b = 1
-    -- Affects near which asymtote maximum growth occurs
-    v = 1
-    -- Depends on the value richards(0)
-    q = 1
-    -- The time of maximum growth if Q=v
-    m = 12
+    a = 1      -- Lower asymtote
+    k = 262974 -- Upper asymtote                                    -- 6 months in minutes
+    b = 1      -- Growth rate
+    v = 1      -- Affects near which asymtote maximum growth occurs
+    q = 1      -- Depends on the value richards(0)
+    m = 12     -- The time of maximum growth if Q=v
 
 -- | http://en.wikipedia.org/wiki/Generalised_logistic_function
 richards :: Double -> Double -> Double -> Double -> Double -> Double -> Int -> Double
