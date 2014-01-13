@@ -12,7 +12,7 @@ import Kerchief            (runKerchief, useDeck)
 
 main :: IO ()
 main = runKerchief $ do
-    liftIO (newDeck "test deck") >>= useDeck
+    useDeck (newDeck "test deck")
     liftIO printHelp
     forever $
         liftIO (prompt "[~] $ ") >>= handleInput

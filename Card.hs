@@ -5,6 +5,7 @@ module Card where
 import Control.Arrow          ((&&&))
 import Control.Applicative
 import Control.Lens
+import Data.List              (isInfixOf)
 import Data.Monoid            ((<>))
 import Data.Time.Clock
 
@@ -74,3 +75,11 @@ nthEntry n entry
     word       = entryWord entry
     front      = word ++ " (" ++ pos ++ ")"
     (pos,back) = ds !! n
+
+-- | Get this reverse of the given card (at least, "reverse" as far as the Eq
+-- instance is concerned).
+reverseCard :: Card -> Card
+reverseCard (Card front back x y) = Card back front x y
+
+containsText :: String -> Card -> Bool
+containsText str (Card front back _ _) = isInfixOf str front || isInfixOf str back

@@ -19,15 +19,12 @@ data KerchiefState = KState
     }
 makeLenses ''KerchiefState
 
-initialKerchiefState :: KerchiefState
-initialKerchiefState = KState { _ksDeck = Nothing }
-
 newtype Kerchief a = 
     Kerchief { unKerchief :: StateT KerchiefState IO a } 
         deriving (Monad, MonadIO)
 
 runKerchief :: Kerchief a -> IO a
-runKerchief = (`evalStateT` initialKerchiefState) . unKerchief
+runKerchief = (`evalStateT` KState Nothing) . unKerchief
 
 getDeck :: Kerchief (Maybe Deck)
 getDeck = Kerchief $ use ksDeck
