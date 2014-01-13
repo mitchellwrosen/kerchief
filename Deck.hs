@@ -18,6 +18,13 @@ data Deck = Deck
     }
 makeLenses ''Deck
 
+-- Compare decks only on the name.
+instance Eq Deck where
+    (Deck n1 _ _) == (Deck n2 _ _) = n1 == n2
+
+instance Ord Deck where
+    compare (Deck n1 _ _) (Deck n2 _ _) = compare n1 n2
+
 newDeck :: String -> Deck
 newDeck name = Deck name S.empty S.empty
 
@@ -36,9 +43,16 @@ updateDeck deck = do
         & deckDueCards  %~ S.union (S.fromList ts)
         & deckDoneCards .~ S.fromList fs
 
--- | Add a card to the deck.
+-- | Add a card to the deck, only if it doesn't already exist.
 addCard :: Deck -> Card -> Deck
-addCard deck card = deck & deckDueCards %~ S.insert card
+addCard deck card = 
+    if S.member card dueCards || S.member card doneCards
+        then deck
+        else deck & deckDueCards %~ S.insert card 
+  where
+    dueCards, doneCards :: Set Card
+    dueCards  = deck ^. deckDueCards
+    doneCards = deck ^. deckDoneCards
 
 -- | Convenience method, combination of newCard and addCard.
 addNewCard :: String -> String -> Deck -> IO Deck
@@ -50,20 +64,12 @@ addNewTwoWayCard front back deck = do
     (c1,c2) <- newTwoWayCard front back
     return $ addCard (addCard deck c1) c2
 
+-- | Remove a card from the deck.
 removeCard :: Deck -> Card -> Deck
-removeCard = undefined
-
-removeDueCard :: Deck -> Card -> Deck
-removeDueCard = undefined
-
-removeNthDueCard :: Deck -> Int -> Deck
-removeNthDueCard = undefined
-
-removeDoneCard :: Deck -> Card -> Deck
-removeDoneCard = undefined
-
-removeNthDoneCard :: Deck -> Int -> Deck
-removeNthDoneCard = undefined
+removeCard deck card = 
+    if S.member card (deck ^. deckDueCards)
+        then deck & deckDueCards %~ S.delete card
+        else deck & deckDoneCards %~ S.delete card
 
 -- | Study a card, which updates its timestamp and moves it from due to done.
 --
