@@ -2,7 +2,9 @@
 
 module Handler.Exit (handleExit) where
 
+import Control.Lens
 import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Foldable       (traverse_)
 import System.Exit         (exitSuccess)
 import Text.Printf
 
@@ -11,30 +13,13 @@ import Kerchief
 import Utils (askYesNo)
 
 handleExit :: [String] -> Kerchief ()
-handleExit ["--help"] = liftIO printExitUsage
-handleExit ["y"]      = saveAndExit
-handleExit ["n"]      = liftIO dontSaveAndExit
-handleExit []         = getDeck >>= maybe noDeck yesDeck
+handleExit [] = do
+    getLoadedDecks >>= liftIO . traverse_ f
+    liftIO exitSuccess
   where
-    noDeck :: Kerchief ()
-    noDeck = liftIO $ putStrLn "Bye."
-
-    yesDeck :: Deck -> Kerchief ()
-    yesDeck (Deck name _ _) = askYesNo (printf "Save deck \"%s\"? (y/n) " name)
-                                       saveAndExit
-                                       (askYesNo "Are you sure? (y/n) "
-                                                 (liftIO dontSaveAndExit)
-                                                 (handleExit []))
-handleExit _ = liftIO printExitUsage
-
-printExitUsage :: IO ()
-printExitUsage = mapM_ putStrLn
-    [ "Usage: exit [y|n]"
-    , "exits, optionally saving the current deck (will always prompt)"
-    ]
-
-saveAndExit :: Kerchief ()
-saveAndExit = saveDeck >> liftIO (putStrLn "Deck saved. Bye." >> exitSuccess)
-
-dontSaveAndExit :: IO ()
-dontSaveAndExit = putStrLn "Deck not saved. Bye." >> exitSuccess
+    -- TODO: Would it be useful to prompt "are you sure?" if "n"?
+    f :: Deck -> IO ()
+    f deck = askYesNo (printf "Save deck \"%s\"? (y/n) " (deck^.deckName))
+                      (writeDeck deck)
+                      (return ())
+handleExit _ = liftIO $ putStrLn "Usage: exit"

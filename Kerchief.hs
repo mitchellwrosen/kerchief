@@ -5,10 +5,10 @@ module Kerchief
     , getDeck
     , isDeckLoaded
     , loadDeck
+    , getLoadedDecks
     , modifyDeck
     , modifyDeckIO
     , runKerchief
-    , saveDeck
     , setDeck
     ) where
 
@@ -23,9 +23,13 @@ import qualified Data.Set                  as S
 import Deck (Deck)
 import qualified Deck
 
+-- | Invariant: if there are any loaded decks, the current deck is Just.
+-- The loadedDecks are thus the previously loaded decks that have been
+-- switched out, but are kept in memory. It's not possible to load a deck
+-- and have currentDeck be Nothing.
 data KerchiefState = KState 
     { _ksCurrentDeck :: Maybe Deck
-    , _ksLoadedDecks :: Set Deck
+    , _ksLoadedDecks :: Set Deck    -- Not including the current deck.
     }
 makeLenses ''KerchiefState
 
@@ -36,8 +40,16 @@ newtype Kerchief a =
 runKerchief :: Kerchief a -> IO a
 runKerchief = (`evalStateT` KState Nothing S.empty) . unKerchief
 
+-- | Check if any decks have been loaded. Per the invariant on KerchiefState,
+-- it's sufficient to just check the current deck.
 isDeckLoaded :: Kerchief Bool
 isDeckLoaded = maybe False (const True) <$> getDeck
+
+-- | Get all loaded decks (including current deck).
+getLoadedDecks :: Kerchief (Set Deck)
+getLoadedDecks = do
+    loaded <- use ksLoadedDecks
+    maybe loaded (`S.insert` loaded) <$> use ksCurrentDeck
 
 getDeck :: Kerchief (Maybe Deck)
 getDeck = use ksCurrentDeck
@@ -60,6 +72,3 @@ loadDeck name = do
     liftIO $ putStrLn ("\"" ++ name ++ "\" loaded.")
     ksCurrentDeck .= deck
     return True
-
-saveDeck :: Kerchief ()
-saveDeck = liftIO $ putStrLn "TODO: actually save deck"

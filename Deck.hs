@@ -1,16 +1,18 @@
-{-# LANGUAGE DeriveGeneric, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Deck where
 
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Extras   (partitionM)
+import qualified Data.ByteString        as BS
 import           Data.Monoid            ((<>))
-import           Data.Serialize         (Serialize, get, put)
+import           Data.Serialize         (Serialize, decode, encode, get, put)
 import           Data.Set               (Set)
 import qualified Data.Set               as S
 
 import Card
+import Utils (eitherToMaybe)
 
 data Deck = Deck
     { _deckName      :: !String
@@ -99,3 +101,13 @@ printDeckCards (Deck _ dueCards doneCards) = f $ S.toDescList (dueCards <> doneC
 -- | Search a deck's cards (both front and back) for a specific string.
 searchDeck :: String -> Deck -> Set Card
 searchDeck str = S.filter (containsText str) . deckCards
+
+deckFile :: String -> FilePath
+deckFile name = "~/.kerchief/" ++ name
+
+readDeck :: String -> IO (Maybe Deck)
+readDeck = fmap (eitherToMaybe . decode) . BS.readFile . deckFile
+
+-- | Write this deck to file.
+writeDeck :: Deck -> IO ()
+writeDeck deck = BS.writeFile (deckFile $ deck^.deckName) (encode deck)

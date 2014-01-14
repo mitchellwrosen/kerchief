@@ -25,3 +25,6 @@ askYesNo s yes no = liftIO (prompt s) >>= \case
     "N"   -> no
     "no"  -> no
     _     -> liftIO (putStrLn "Please input \"y\" or \"n\".") >> askYesNo s yes no
+
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe = either (const Nothing) Just
