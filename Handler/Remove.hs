@@ -27,24 +27,25 @@ printRemoveUsage = mapM_ putStrLn
     ]
 
 handleRemoveWord :: String -> Kerchief ()
-handleRemoveWord word = getCurrentDeck >>= maybe noDeck yesDeck
-  where
-    noDeck :: Kerchief ()
-    noDeck = liftIO $ putStrLn "No deck selected. Use \"deck\", or the optional deck arg. See \"remove --help\"."
-
-    yesDeck :: Deck -> Kerchief ()
-    yesDeck deck = removeWordDeck word deck
+handleRemoveWord word = do
+    loaded <- isDeckLoaded
+    if loaded
+        then removeWord word
+        else liftIO $ putStrLn "No deck loaded. Use \"deck\", or the optional deck arg. See \"remove --help\"."
 
 handleRemoveWordDeck :: String -> String -> Kerchief ()
-handleRemoveWordDeck word deck = loadDeck deck >>= maybe
-    (liftIO . putStrLn $ "Deck \"" ++ deck ++ "\" not found. Try \"ls decks/\" or \"deck --list\".")
-    (removeWordDeck word)
+handleRemoveWordDeck word deck = do
+    loaded <- loadDeck deck
+    if loaded
+        then removeWord word
+        else liftIO . putStrLn $ "Deck \"" ++ deck ++ "\" not found. Try \"ls decks/\" or \"deck --list\"."
 
-removeWordDeck :: String -> Deck -> Kerchief ()
-removeWordDeck word deck = do
+removeWord :: String -> Kerchief ()
+removeWord word = do
+    Just deck <- getDeck -- TODO: Partial function :(
     let cards = searchDeck word deck
     if S.null cards
-        then liftIO $ putStrLn "No cards found."
+        then liftIO $ putStrLn "No matching cards found."
         else loop cards
   where
     -- "loop" only so long as the user is inputting bad data.
@@ -55,7 +56,7 @@ removeWordDeck word deck = do
         liftIO getLine >>= \case
             "-" -> liftIO $ putStrLn "No cards removed."
             s   -> case reads s of
-                [(n,"")] | n >= 0 && n < S.size cards -> putDeck $ removeCard deck (S.elemAt n cards)
+                [(n,"")] | n >= 0 && n < S.size cards -> modifyDeck (removeCard $ S.elemAt n cards)
                 _ -> do
                     liftIO $ putStrLn "Please pick a valid integer."
                     loop cards

@@ -4,15 +4,17 @@ module Main where
 
 import Control.Monad       (forever)
 import Control.Monad.Trans (liftIO)
-import System.IO           (hFlush, stdout)
+import System.IO           (BufferMode(..), hSetBuffering, stdout)
 
-import Deck                (newDeck)
 import Handler             (handleInput)
-import Kerchief            (runKerchief, useDeck)
+import Kerchief            (loadDeck, runKerchief)
+import Utils               (prompt)
 
 main :: IO ()
 main = runKerchief $ do
-    useDeck (newDeck "test deck")
+    liftIO $ hSetBuffering stdout NoBuffering
+
+    _ <- loadDeck "testDeck"
     liftIO printHelp
     forever $
         liftIO (prompt "[~] $ ") >>= handleInput
@@ -22,6 +24,3 @@ printHelp = mapM_ putStrLn
     [ "Kerchief by MitchellSalad"
     , "Type \"ls\" to get started. \"exit\" to exit."
     ]
-
-prompt :: String -> IO String
-prompt s = putStr s >> hFlush stdout >> getLine

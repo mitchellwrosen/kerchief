@@ -2,12 +2,14 @@
 
 module Kerchief
     ( Kerchief
-    , runKerchief
-    , getCurrentDeck
+    , getDeck
+    , isDeckLoaded
     , loadDeck
-    , putDeck
+    , modifyDeck
+    , modifyDeckIO
+    , runKerchief
     , saveDeck
-    {-, useDeck-}
+    , setDeck
     ) where
 
 import           Control.Applicative
@@ -18,7 +20,8 @@ import           Control.Monad.Trans.State
 import           Data.Set                  (Set)
 import qualified Data.Set                  as S
 
-import Deck
+import Deck (Deck)
+import qualified Deck
 
 data KerchiefState = KState 
     { _ksCurrentDeck :: Maybe Deck
@@ -33,23 +36,30 @@ newtype Kerchief a =
 runKerchief :: Kerchief a -> IO a
 runKerchief = (`evalStateT` KState Nothing S.empty) . unKerchief
 
-getCurrentDeck :: Kerchief (Maybe Deck)
-getCurrentDeck = Kerchief $ use ksCurrentDeck
+isDeckLoaded :: Kerchief Bool
+isDeckLoaded = maybe False (const True) <$> getDeck
 
-{-useDeck :: Deck -> Kerchief ()-}
-{-useDeck deck = Kerchief $ ksDeck .= Just deck-}
+getDeck :: Kerchief (Maybe Deck)
+getDeck = use ksCurrentDeck
 
--- | Load the given deck (if necessary). Don't set it as the current deck.
-loadDeck :: String -> Kerchief (Maybe Deck)
-loadDeck name = Nothing <$ liftIO (putStrLn "TODO: actually load deck")
+-- | Set the current deck.
+setDeck :: Deck -> Kerchief ()
+setDeck deck = ksCurrentDeck .= Just deck 
 
--- | Put the deck into the state, possibly overwriting the contents of another
--- deck (if it already exists).
-putDeck :: Deck -> Kerchief ()
-putDeck deck = getCurrentDeck >>= maybe no yes
-  where
-    no    = ksLoadedDecks %= S.insert deck
-    yes d = ksCurrentDeck .= Just d
+modifyDeck :: (Deck -> Deck) -> Kerchief ()
+modifyDeck f = getDeck >>= maybe (return ()) (setDeck . f)
+
+modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()
+modifyDeckIO f = getDeck >>= maybe (return ()) (\d -> liftIO (f d) >>= setDeck)
+
+-- | Load the given deck (if necessary) and set it as the current deck.
+-- TODO: Actually load the deck from file.
+loadDeck :: String -> Kerchief Bool
+loadDeck name = do
+    let deck = Just (Deck.newDeck name)
+    liftIO $ putStrLn ("\"" ++ name ++ "\" loaded.")
+    ksCurrentDeck .= deck
+    return True
 
 saveDeck :: Kerchief ()
-saveDeck = liftIO (putStrLn "TODO: actually save deck")
+saveDeck = liftIO $ putStrLn "TODO: actually save deck"

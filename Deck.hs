@@ -65,8 +65,8 @@ addNewTwoWayCard front back deck = do
     return $ addCard (addCard deck c1) c2
 
 -- | Remove a card from the deck.
-removeCard :: Deck -> Card -> Deck
-removeCard deck card = 
+removeCard :: Card -> Deck -> Deck
+removeCard card deck = 
     if S.member card (deck ^. deckDueCards)
         then deck & deckDueCards %~ S.delete card
         else deck & deckDoneCards %~ S.delete card

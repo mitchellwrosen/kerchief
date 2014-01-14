@@ -24,17 +24,22 @@ printAddUsage = mapM_ putStrLn
     ]
 
 handleAddWord :: String -> Kerchief ()
-handleAddWord word = getCurrentDeck >>= maybe
-    (liftIO $ putStrLn "No deck selected. Use \"deck\", or the optional deck arg. See \"add --help\".")
-    (addWordDeck word)
+handleAddWord word = do
+    loaded <- isDeckLoaded
+    if loaded
+        then addWord word
+        else liftIO $ putStrLn "No deck selected. Use \"deck\", or the optional deck arg. See \"add --help\"."
 
 handleAddWordDeck :: String -> String -> Kerchief ()
-handleAddWordDeck word deck = loadDeck deck >>= maybe
-    (liftIO . putStrLn $ "Deck \"" ++ deck ++ "\" not found. Try \"ls decks/\" or \"deck --list\".")
-    (addWordDeck word)
+handleAddWordDeck word deck = do
+    loaded <- loadDeck deck
+    if loaded
+            then addWord word
+            else liftIO . putStrLn $ "Deck \"" ++ deck ++ "\" not found. Try \"ls decks/\" or \"deck --list\"."
 
-addWordDeck :: String -> Deck -> Kerchief ()
-addWordDeck word deck = liftIO (lookupWord word) >>=
+-- TODO - offer to add the reverse card
+addWord :: String -> Kerchief ()
+addWord word = liftIO (lookupWord word) >>=
     maybe (liftIO $ putStrLn "No definition found.")
           (\entry -> liftIO (putStrLn "" >> print entry) >> pickDefinition entry)
   where
@@ -54,5 +59,5 @@ addWordDeck word deck = liftIO (lookupWord word) >>=
 
     doAddCard :: (String, String) -> Kerchief ()
     doAddCard (front,back) = do
-        liftIO (addNewCard front back deck) >>= putDeck
+        modifyDeckIO $ addNewCard front back
         liftIO $ putStrLn "Card added."
