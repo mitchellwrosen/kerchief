@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric, TemplateHaskell #-}
 
 module Deck where
 
@@ -6,6 +6,7 @@ import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Extras   (partitionM)
 import           Data.Monoid            ((<>))
+import           Data.Serialize         (Serialize, get, put)
 import           Data.Set               (Set)
 import qualified Data.Set               as S
 
@@ -15,7 +16,7 @@ data Deck = Deck
     { _deckName      :: !String
     , _deckDueCards  :: Set Card
     , _deckDoneCards :: Set Card
-    }
+    } deriving Show
 makeLenses ''Deck
 
 -- Compare decks only on the name.
@@ -24,6 +25,10 @@ instance Eq Deck where
 
 instance Ord Deck where
     compare (Deck n1 _ _) (Deck n2 _ _) = compare n1 n2
+
+instance Serialize Deck where
+    put (Deck name due done) = put name >> put due >> put done
+    get = Deck <$> get <*> get <*> get
 
 newDeck :: String -> Deck
 newDeck name = Deck name S.empty S.empty
@@ -45,10 +50,10 @@ updateDeck deck = do
 
 -- | Add a card to the deck, only if it doesn't already exist.
 addCard :: Deck -> Card -> Deck
-addCard deck card = 
+addCard deck card =
     if S.member card dueCards || S.member card doneCards
         then deck
-        else deck & deckDueCards %~ S.insert card 
+        else deck & deckDueCards %~ S.insert card
   where
     dueCards, doneCards :: Set Card
     dueCards  = deck ^. deckDueCards
@@ -66,7 +71,7 @@ addNewTwoWayCard front back deck = do
 
 -- | Remove a card from the deck.
 removeCard :: Card -> Deck -> Deck
-removeCard card deck = 
+removeCard card deck =
     if S.member card (deck ^. deckDueCards)
         then deck & deckDueCards %~ S.delete card
         else deck & deckDoneCards %~ S.delete card

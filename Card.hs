@@ -7,19 +7,22 @@ import Control.Applicative
 import Control.Lens
 import Data.List              (isInfixOf)
 import Data.Monoid            ((<>))
+import Data.Serialize
 import Data.Time.Clock
 
 import Data.Dictionary.Google (Entry(..))
+import Data.Time.Instances    ()
 import Richards
 
+-- | User-supplied feedback for the difficulty of a card.
 data Feedback = Wrong | Hard | Easy
 
 data Card = Card
-    { _cardFront       :: String
-    , _cardBack        :: String
-    , _cardScore       :: Int
-    , _cardLastStudied :: UTCTime
-    }
+    { _cardFront       :: !String
+    , _cardBack        :: !String
+    , _cardScore       :: !Int
+    , _cardLastStudied :: !UTCTime
+    } deriving Show
 makeLenses ''Card
 
 -- | Compare cards on their contents, not score or timestamp.
@@ -29,10 +32,15 @@ instance Eq Card where
 instance Ord Card where
     compare (Card f1 b1 _ _) (Card f2 b2 _ _) = compare f1 f2 <> compare b1 b2
 
-instance Show Card where
-    show (Card front back _ _) = "[Front] " ++ front ++ " [Back] " ++ back
+instance Serialize Card where
+    put (Card front back score lastStudied) = put front >> put back >> put score >> put lastStudied
+    get = Card <$> get <*> get <*> get <*> get
 
--- | Determine if a card is due for studying.
+-- | Show instance for pretty-printing to console.
+showCard :: Card -> String
+showCard (Card front back _ _) = "[Front] " ++ front ++ " [Back] " ++ back
+
+-- | Check if a card is due for studying.
 isDue :: Card -> IO Bool
 isDue card = do
     now <- getCurrentTime
