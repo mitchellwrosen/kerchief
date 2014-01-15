@@ -19,10 +19,8 @@ handleRemove _           = liftIO printRemoveUsage
 printRemoveUsage :: IO ()
 printRemoveUsage = mapM_ putStrLn
     [ "Usage: remove word"
-    , ""
     , "search for cards containing |word| from the current deck, and prompt for"
     , "prompt for their removal"
-    , ""
     ]
 
 handleRemoveWord :: String -> Kerchief ()

@@ -17,9 +17,7 @@ handleAdd _           = liftIO printAddUsage
 printAddUsage :: IO ()
 printAddUsage = mapM_ putStrLn
     [ "Usage: add word"
-    , ""
     , "look up |word|, pick a definition, and add it to the current deck"
-    , ""
     ]
 
 handleAddWord :: String -> Kerchief ()

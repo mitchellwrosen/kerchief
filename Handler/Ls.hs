@@ -13,7 +13,7 @@ handleLs [file]
 handleLs _              = putStrLn "Usage: ls [file]"
 
 filesStr :: String
-filesStr = "add  deck  decks/  remove  save"
+filesStr = "add  load  decks/  print  remove  save"
 
 files :: [String]
 files = words filesStr
