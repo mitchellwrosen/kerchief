@@ -1,7 +1,9 @@
 module Handler.Ls (handleLs) where
 
-import Config           (kerchiefDir)
-import Utils            (catchVoid, getDirectoryContents')
+import Data.List (intercalate)
+
+import Config    (kerchiefDir)
+import Utils     (catchVoid, getDirectoryContents')
 
 handleLs :: [String] -> IO ()
 handleLs []             = putStrLn filesStr
@@ -20,4 +22,4 @@ files = words filesStr
 
 handleLsDecks :: IO ()
 handleLsDecks = catchVoid $
-    kerchiefDir >>= getDirectoryContents' >>= mapM_ putStrLn
+    kerchiefDir >>= getDirectoryContents' >>= putStrLn . intercalate "  "

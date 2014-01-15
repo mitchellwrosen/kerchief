@@ -49,8 +49,8 @@ updateDeck deck = do
         & deckDoneCards .~ S.fromList fs
 
 -- | Add a card to the deck, only if it doesn't already exist.
-addCard :: Deck -> Card -> Deck
-addCard deck card =
+addCard :: Card -> Deck -> Deck
+addCard card deck =
     if S.member card dueCards || S.member card doneCards
         then deck
         else deck & deckDueCards %~ S.insert card
@@ -61,13 +61,13 @@ addCard deck card =
 
 -- | Convenience method, combination of newCard and addCard.
 addNewCard :: String -> String -> Deck -> IO Deck
-addNewCard front back deck = addCard deck <$> newCard front back
+addNewCard front back deck = flip addCard deck <$> newCard front back
 
 -- | Convenience method, combination of newTwoWayCard and addCard.
 addNewTwoWayCard :: String -> String -> Deck -> IO Deck
 addNewTwoWayCard front back deck = do
     (c1,c2) <- newTwoWayCard front back
-    return $ addCard (addCard deck c1) c2
+    return $ addCard c2 (addCard c1 deck)
 
 -- | Remove a card from the deck.
 removeCard :: Card -> Deck -> Deck

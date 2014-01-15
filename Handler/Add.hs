@@ -5,10 +5,12 @@ module Handler.Add (handleAdd) where
 import Data.Dictionary.Google (Entry, lookupWord)
 import Control.Monad.Trans
 
-import Card                   (nthEntry)
+import Card                   (Card, newCard, nthEntry, reverseCard)
 import Deck
 import Kerchief
+import Utils                  (askYesNo)
 
+-- TODO: "add front back" for making a new card, not from the dictionary
 handleAdd :: [String] -> Kerchief ()
 handleAdd ["--help"]  = liftIO printAddUsage
 handleAdd [word]      = handleAddWord word
@@ -25,9 +27,9 @@ handleAddWord word = do
     loaded <- isDeckLoaded
     if loaded
         then liftIO (lookupWord word) >>=
-            maybe (liftIO $ putStrLn "No definition found.")
+            maybe (liftIO . putStrLn $ "No definition found for \"" ++ word ++ "\".")
                   (\entry -> liftIO (putStrLn "" >> print entry) >> pickDefinition entry)
-        else liftIO $ putStrLn "No deck loaded. Try \"deck --help\"."
+        else liftIO $ putStrLn "No deck loaded. See \"load --help\"."
   where
     pickDefinition :: Entry -> Kerchief ()
     pickDefinition entry = do
@@ -45,5 +47,13 @@ handleAddWord word = do
 
     doAddCard :: (String, String) -> Kerchief ()
     doAddCard (front,back) = do
-        modifyDeckIO $ addNewCard front back
-        liftIO $ putStrLn "Card added."
+        card <- liftIO $ newCard front back
+        doAddCard' card
+        askYesNo "Add reverse card as well? (y/n) "
+                 (doAddCard' $ reverseCard card)
+                 (return ())
+      where
+          doAddCard' :: Card -> Kerchief ()
+          doAddCard' card = do
+              modifyDeck $ addCard card
+              liftIO $ putStrLn "Card added."

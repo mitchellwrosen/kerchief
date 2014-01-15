@@ -2,11 +2,13 @@
 
 module Utils where
 
-import Control.Exception (SomeException, catch)
-import Control.Monad (unless)
-import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Foldable (Foldable, foldl)
-import System.Directory (getDirectoryContents)
+import           Control.Exception   (SomeException, catch)
+import           Control.Monad       (unless)
+import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Foldable       (Foldable, foldl)
+import           Data.Set            (Set)
+import qualified Data.Set            as S
+import           System.Directory    (getDirectoryContents)
 
 import Prelude hiding (foldl)
 
@@ -21,7 +23,7 @@ showNumbered :: (Show a, Foldable t) => t a -> [String]
 showNumbered = showNumberedWith show
 
 showNumberedWith :: forall a t. Foldable t => (a -> String) -> t a -> [String]
-showNumberedWith f = snd . foldl g (0,[])
+showNumberedWith f = snd . foldl g (1,[])
   where
     g :: (Int,[String]) -> a -> (Int,[String])
     g (n,ss) a = (n+1, ss ++ [show n ++ ". " ++ f a])
@@ -63,3 +65,14 @@ whenJust f (Just a) = f a >> return ()
 
 getDirectoryContents' :: FilePath -> IO [FilePath]
 getDirectoryContents' = fmap (filter (\a -> a /= "." && a/= "..")) . getDirectoryContents
+
+reads' :: Read a => String -> Maybe a
+reads' s = case reads s of
+    [(a,"")] -> Just a
+    _ -> Nothing
+
+-- | Safe replacement for Data.Set's partial elemAt
+elemAt' :: Int -> Set a -> Maybe a
+elemAt' n s 
+    | n < 0 || n >= S.size s = Nothing
+    | otherwise              = Just (S.elemAt n s)

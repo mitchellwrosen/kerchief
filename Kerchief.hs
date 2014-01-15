@@ -4,6 +4,7 @@ module Kerchief
     ( Kerchief
     , getDeck
     , isDeckLoaded
+    , isModified
     , loadDeck
     , loadDeckByName
     , modifyDeck
@@ -27,7 +28,9 @@ import Deck
 import Utils  (catchNothing, eitherToMaybe, whenJust)
 
 data KerchiefState = KState
-    { _ksDeck :: Maybe Deck }
+    { _ksDeck     :: Maybe Deck
+    , _ksModified :: Bool -- Keep track of in-memory changes to current deck.
+    }
 makeLenses ''KerchiefState
 
 newtype Kerchief a =
@@ -35,7 +38,7 @@ newtype Kerchief a =
         deriving (Functor, Applicative, Monad, MonadIO, MonadState KerchiefState)
 
 runKerchief :: Kerchief a -> IO a
-runKerchief = (`evalStateT` KState Nothing) . unKerchief
+runKerchief = (`evalStateT` KState Nothing False) . unKerchief
 
 isDeckLoaded :: Kerchief Bool
 isDeckLoaded = maybe False (const True) <$> getDeck
@@ -44,17 +47,30 @@ isDeckLoaded = maybe False (const True) <$> getDeck
 getDeck :: Kerchief (Maybe Deck)
 getDeck = use ksDeck
 
+isModified :: Kerchief Bool
+isModified = use ksModified
+
 -- | Overwrite the current deck without saving it.
 loadDeck :: Deck -> Kerchief ()
-loadDeck deck = ksDeck .= Just deck
+loadDeck deck = do
+    ksDeck .= Just deck
+    ksModified .= False
 
 -- | Modify the current deck.
 modifyDeck :: (Deck -> Deck) -> Kerchief ()
-modifyDeck f = getDeck >>= maybe (return ()) (loadDeck . f)
+modifyDeck f = getDeck >>= \case
+    Nothing   -> return ()
+    Just deck -> do
+        loadDeck (f deck)
+        ksModified .= True
 
 -- | Modify the current deck with an IO action.
 modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()
-modifyDeckIO f = getDeck >>= maybe (return ()) (\d -> liftIO (f d) >>= loadDeck)
+modifyDeckIO f = getDeck >>= \case
+    Nothing -> return ()
+    Just deck -> do
+        liftIO (f deck) >>= loadDeck
+        ksModified .= True
 
 -- | Load the given deck, given its name. Return whether or not the load was
 -- successful (i.e. does the deck exist?). Returns True in the case that the
@@ -76,9 +92,10 @@ readDeck name = kerchiefDir >>= catchNothing . fmap (eitherToMaybe . decode) . B
 -- | Save the current deck to file, creating the file first if it doesn't exist.
 -- If there is no current deck, do nothing.
 saveDeck :: Kerchief ()
-saveDeck = getDeck >>= whenJust (liftIO . f)
+saveDeck = getDeck >>= whenJust saveDeck'
   where
-    f :: Deck -> IO ()
-    f deck@(Deck name _ _) = do
-        path <- (</> name) <$> kerchiefDir
-        withBinaryFile path WriteMode (`BS.hPut` encode deck)
+    saveDeck' :: Deck -> Kerchief ()
+    saveDeck' deck@(Deck name _ _) = do
+        path <- (</> name) <$> liftIO kerchiefDir
+        liftIO $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
+        ksModified .= False
