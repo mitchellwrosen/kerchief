@@ -5,8 +5,9 @@ module Main where
 import Control.Monad       (forever)
 import Control.Monad.Trans (liftIO)
 import System.IO           (BufferMode(..), hSetBuffering, stdout)
-import System.Directory    (createDirectoryIfMissing, getHomeDirectory)
+import System.Directory    (createDirectoryIfMissing)
 
+import Config              (kerchiefDir)
 import Handler             (handleInput)
 import Kerchief            (runKerchief)
 import Utils               (prompt)
@@ -14,10 +15,7 @@ import Utils               (prompt)
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-
-    homeDir <- getHomeDirectory
-    createDirectoryIfMissing False (homeDir ++ "/.kerchief")
-
+    kerchiefDir >>= createDirectoryIfMissing False
     printHelp
     runKerchief $ forever $
         liftIO (prompt "[~] $ ") >>= handleInput

@@ -1,6 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Deck where
+module Deck 
+    ( Deck
+    , addCard
+    , addNewCard
+    , addNewTwoWayCard
+    , deckCards
+    , deckName
+    , newDeck
+    , removeCard
+    , searchDeck
+    , studyCard
+    , updateDeck
+    ) where
 
 import           Control.Applicative
 import           Control.Lens

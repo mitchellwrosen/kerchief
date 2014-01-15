@@ -78,9 +78,9 @@ modifyDeckIO f = getDeck >>= \case
 loadDeckByName :: String -> Kerchief Bool
 loadDeckByName name = getDeck >>= \case
     Nothing -> loadDeckByName'
-    Just (Deck name' _ _)
-        | name == name' -> return True
-        | otherwise     -> loadDeckByName'
+    Just deck
+        | name == deck^.deckName -> return True
+        | otherwise              -> loadDeckByName'
   where
     loadDeckByName' :: Kerchief Bool
     loadDeckByName' = liftIO (readDeck name) >>= maybe (return False) (\d -> loadDeck d >> return True)
@@ -95,7 +95,7 @@ saveDeck :: Kerchief ()
 saveDeck = getDeck >>= whenJust saveDeck'
   where
     saveDeck' :: Deck -> Kerchief ()
-    saveDeck' deck@(Deck name _ _) = do
-        path <- (</> name) <$> liftIO kerchiefDir
+    saveDeck' deck = do
+        path <- (</> deck^.deckName) <$> liftIO kerchiefDir
         liftIO $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
         ksModified .= False

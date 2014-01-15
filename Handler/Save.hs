@@ -1,16 +1,17 @@
 module Handler.Save (handleSave) where
 
+import Control.Lens        ((^.))
 import Control.Monad.Trans (liftIO)
 
-import Deck          (Deck(..))
+import Deck                (deckName)
 import Kerchief
 
 handleSave :: [String] -> Kerchief ()
 handleSave [] = getDeck >>= maybe
     (liftIO $ putStrLn "No deck loaded.")
-    (\(Deck name _ _) -> do
+    (\deck -> do
         saveDeck
-        liftIO (putStrLn $ "\"" ++ name ++ "\" saved."))
+        liftIO (putStrLn $ "\"" ++ deck^.deckName ++ "\" saved."))
 handleSave _  = liftIO printSaveUsage
 
 printSaveUsage :: IO ()
