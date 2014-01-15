@@ -1,13 +1,13 @@
 module Handler.Load (handleLoad) where
 
 import Control.Monad.Trans (liftIO)
+import Data.List           (intercalate)
 
-import Card          (showCard)
-import Deck          (deckCards, newDeck)
-import Handler.Ls    (handleLs)
-import Handler.Utils (promptSaveCurrentDeck)
+import Config              (kerchiefDir)
+import Deck                (newDeck)
+import Handler.Utils       (promptSaveCurrentDeck)
 import Kerchief
-import Utils         (askYesNo, printNumberedWith, unless')
+import Utils               (askYesNo, getDirectoryContents')
 
 handleLoad :: [String] -> Kerchief ()
 handleLoad ["--help"]   = liftIO printLoadUsage
@@ -15,21 +15,25 @@ handleLoad [name]       = handleLoadName name
 handleLoad _            = liftIO printLoadUsage
 
 printLoadUsage :: IO ()
-printLoadUsage = mapM_ putStrLn
-    [ "Usage: load deck"
-    , "load (or create) deck from file"
-    ]
+printLoadUsage = do
+    putStr "Available decks: "
+    kerchiefDir >>= getDirectoryContents' >>= putStrLn . intercalate ", "
+    mapM_ putStrLn
+        [ "Usage: load deck"
+        , "load (or create) deck from file"
+        ]
 
 handleLoadName :: String -> Kerchief ()
-handleLoadName name = loadDeckByName name >>= unless' promptCreateNewDeck
+handleLoadName name = do
+    promptSaveCurrentDeck
+    loaded <- loadDeckByName name
+    if loaded
+        then liftIO . putStrLn $ "\"" ++ name ++ "\" loaded."
+        else askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
+                      createAndLoadNewDeck
+                      (return ())
   where
-    promptCreateNewDeck :: Kerchief ()
-    promptCreateNewDeck = askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
-                                   createAndLoadNewDeck
-                                   (return ())
-
     createAndLoadNewDeck :: Kerchief ()
     createAndLoadNewDeck = do
-        promptSaveCurrentDeck
         loadDeck (newDeck name)
-        liftIO . putStrLn $ "Deck \"" ++ name ++ "\" created."
+        liftIO . putStrLn $ "\"" ++ name ++ "\" created."
