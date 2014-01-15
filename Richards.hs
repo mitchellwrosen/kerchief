@@ -1,12 +1,11 @@
 -- | Carefully tuned sigmoid function
 module Richards where
 
-import Data.Castable (cast)
 import Data.Time.Clock
 
 -- | Given a score, get the interval in minutes.
 intervalAt :: Int -> NominalDiffTime
-intervalAt = cast . secondsToDiffTime . floor . (*60) . richards a k b v q m
+intervalAt = realToFrac . secondsToDiffTime . floor . (*60) . richards a k b v q m
   where
     a = 1      -- Lower asymtote
     k = 262974 -- Upper asymtote                                    -- 6 months in minutes
