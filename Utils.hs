@@ -2,7 +2,8 @@
 
 module Utils where
 
-import Control.Monad (void)
+import Control.Exception (SomeException, catch)
+import Control.Monad (unless, void)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Foldable
 
@@ -28,3 +29,18 @@ askYesNo s yes no = liftIO (prompt s) >>= \case
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe = either (const Nothing) Just
+
+catchVoid :: IO () -> IO ()
+catchVoid = (`catch` (\(_ :: SomeException) -> return ()))
+
+catchNothing :: IO (Maybe a) -> IO (Maybe a)
+catchNothing = (`catch` (\(_ :: SomeException) -> return Nothing))
+
+unless' :: Monad m => m () -> Bool -> m ()
+unless' = flip unless
+
+-- | maybeThen a f m performs action |a| unconditionally, possibly preceded by
+-- action |f b| if |m| is Just b.
+maybeThen :: Monad m => m a -> (b -> m c) -> Maybe b -> m a
+maybeThen thn _ Nothing  = thn
+maybeThen thn f (Just b) = f b >> thn
