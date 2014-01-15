@@ -3,18 +3,28 @@
 module Utils where
 
 import Control.Exception (SomeException, catch)
-import Control.Monad (unless, void)
+import Control.Monad (unless)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Foldable
+import Data.Foldable (Foldable, foldl)
 import System.Directory (getDirectoryContents)
 
+import Prelude hiding (foldl)
 
 -- | Print each element of a Foldable, prepended by a number (starting at 1).
-printNumbered :: forall a t. (Show a, Foldable t) => t a -> IO ()
-printNumbered = void . foldlM f 1
+printNumbered :: (Show a, Foldable t) => t a -> IO ()
+printNumbered = printNumberedWith show
+
+printNumberedWith :: Foldable t => (a -> String) -> t a -> IO ()
+printNumberedWith f = mapM_ putStrLn . showNumberedWith f
+
+showNumbered :: (Show a, Foldable t) => t a -> [String]
+showNumbered = showNumberedWith show
+
+showNumberedWith :: forall a t. Foldable t => (a -> String) -> t a -> [String]
+showNumberedWith f = snd . foldl g (0,[])
   where
-    f :: Int -> a -> IO Int
-    f n card = putStrLn (show n ++ ". " ++ show card) >> return (n+1)
+    g :: (Int,[String]) -> a -> (Int,[String])
+    g (n,ss) a = (n+1, ss ++ [show n ++ ". " ++ f a])
 
 prompt :: String -> IO String
 prompt s = putStr s >> getLine

@@ -2,11 +2,12 @@ module Handler.Deck (handleDeck) where
 
 import Control.Monad.Trans (liftIO)
 
+import Card          (showCard)
 import Deck          (deckCards, newDeck)
 import Handler.Ls    (handleLs)
 import Handler.Utils (promptSaveCurrentDeck)
 import Kerchief
-import Utils         (askYesNo, printNumbered, unless')
+import Utils         (askYesNo, printNumberedWith, unless')
 
 handleDeck :: [String] -> Kerchief ()
 handleDeck ["--help"]   = liftIO printDeckUsage
@@ -26,7 +27,8 @@ printDeckUsage = mapM_ putStrLn
     ]
 
 handleDeckPrint :: Kerchief ()
-handleDeckPrint = getDeck >>= liftIO . maybe (putStrLn "No deck selected.") (printNumbered . deckCards)
+handleDeckPrint = getDeck >>= liftIO . maybe (putStrLn "No deck selected.")
+                                             (printNumberedWith showCard . deckCards)
 
 handleDeckName :: String -> Kerchief ()
 handleDeckName name = loadDeckByName name >>= unless' promptCreateNewDeck
