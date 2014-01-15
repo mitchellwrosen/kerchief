@@ -5,12 +5,10 @@ module Deck where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Extras   (partitionM)
-import           Data.Foldable          (Foldable, foldMap)
 import           Data.Monoid            -- ((<>))
 import           Data.Serialize         (Serialize, get, put)
 import           Data.Set               (Set)
 import qualified Data.Set               as S
-import           System.IO
 
 import Card
 
@@ -94,12 +92,3 @@ deckCards (Deck _ x y) = x <> y
 -- | Search a deck's cards (both front and back) for a specific string.
 searchDeck :: String -> Deck -> Set Card
 searchDeck str = S.filter (containsText str) . deckCards
-
--- | Given a (foldable) container of Decks, return the first Deck with name
--- matching the input String.
-getDeckWithName :: Foldable t => String -> t Deck -> Maybe Deck
-getDeckWithName name = getFirst . foldMap f
-  where
-    f deck@(Deck name' _ _)
-        | name == name' = First (Just deck)
-        | otherwise     = First Nothing

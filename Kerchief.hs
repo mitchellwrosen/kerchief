@@ -1,17 +1,15 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, TemplateHaskell #-}
 
 module Kerchief
     ( Kerchief
     , getDeck
     , isDeckLoaded
     , loadDeck
-    , getLoadedDecks
+    , loadDeckByName
     , modifyDeck
     , modifyDeckIO
-    , readDeck
     , runKerchief
-    , setDeck
-    , writeDeck
+    , saveDeck
     ) where
 
 import           Control.Applicative
@@ -21,26 +19,15 @@ import           Control.Monad.Trans       (MonadIO, liftIO)
 import           Control.Monad.Trans.State
 import qualified Data.ByteString           as BS
 import           Data.Serialize            (encode, decode)
-import           Data.Set                  (Set)
-import qualified Data.Set                  as S
-import           System.Directory          (getHomeDirectory)
 import           System.FilePath           ((</>))
 import           System.IO
 
+import Config (kerchiefDir)
 import Deck
-import Utils (catchNothing, eitherToMaybe)
+import Utils  (catchNothing, eitherToMaybe, whenJust)
 
-kerchiefDir :: FilePath -> IO FilePath
-kerchiefDir path = (</> ".kerchief" </> path) <$> getHomeDirectory
-
--- | Invariant: if there are any loaded decks, the current deck is Just.
--- The loadedDecks are thus the previously loaded decks that have been
--- switched out, but are kept in memory. It's not possible to load a deck
--- and have currentDeck be Nothing.
 data KerchiefState = KState
-    { _ksCurrentDeck :: Maybe Deck
-    , _ksLoadedDecks :: Set Deck    -- Not including the current deck.
-    }
+    { _ksDeck :: Maybe Deck }
 makeLenses ''KerchiefState
 
 newtype Kerchief a =
@@ -48,73 +35,50 @@ newtype Kerchief a =
         deriving (Functor, Applicative, Monad, MonadIO, MonadState KerchiefState)
 
 runKerchief :: Kerchief a -> IO a
-runKerchief = (`evalStateT` KState Nothing S.empty) . unKerchief
+runKerchief = (`evalStateT` KState Nothing) . unKerchief
 
--- | Check if any decks have been loaded. Per the invariant on KerchiefState,
--- it's sufficient to just check the current deck.
 isDeckLoaded :: Kerchief Bool
 isDeckLoaded = maybe False (const True) <$> getDeck
 
--- | Get all loaded decks (including current deck).
-getLoadedDecks :: Kerchief (Set Deck)
-getLoadedDecks = do
-    loaded <- use ksLoadedDecks
-    maybe loaded (`S.insert` loaded) <$> use ksCurrentDeck
-
+-- | Get the current deck.
 getDeck :: Kerchief (Maybe Deck)
-getDeck = use ksCurrentDeck
+getDeck = use ksDeck
 
--- | Set the current deck to |deck|. Depending on if there is a current deck, or
--- if there are any loaded decks (one of which may be |deck|), this function may
--- do different amounts of data shuffling. At the end, |deck| will be the
--- current deck, and |deck| will not exist in loadedDecks.
-setDeck :: Deck -> Kerchief ()
-setDeck deck = getDeck >>= maybe setDeck' ifCurrentDeck
-  where
-    ifCurrentDeck :: Deck -> Kerchief ()
-    ifCurrentDeck cur
-        | cur == deck = return () -- Current deck == argument, do nothing
-        | otherwise   = do
-            ksLoadedDecks %= S.insert cur
-            setDeck'
-
-    setDeck' :: Kerchief ()
-    setDeck' = do
-        ksCurrentDeck .= Just deck
-        ksLoadedDecks %= S.delete deck
+-- | Overwrite the current deck without saving it.
+loadDeck :: Deck -> Kerchief ()
+loadDeck deck = ksDeck .= Just deck
 
 -- | Modify the current deck.
 modifyDeck :: (Deck -> Deck) -> Kerchief ()
-modifyDeck f = getDeck >>= maybe (return ()) (setDeck . f)
+modifyDeck f = getDeck >>= maybe (return ()) (loadDeck . f)
 
 -- | Modify the current deck with an IO action.
 modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()
-modifyDeckIO f = getDeck >>= maybe (return ()) (\d -> liftIO (f d) >>= setDeck)
+modifyDeckIO f = getDeck >>= maybe (return ()) (\d -> liftIO (f d) >>= loadDeck)
 
--- | Load the given deck (if necessary) and set it as the current deck. Return
--- whether or not the load was successful (i.e. does the deck exist?). Returns
--- True in the case that the deck was already loaded.
-loadDeck :: String -> Kerchief Bool
-loadDeck name = getLoadedDecks >>= maybe notAlreadyLoaded alreadyLoaded . Deck.getDeckWithName name
+-- | Load the given deck, given its name. Return whether or not the load was
+-- successful (i.e. does the deck exist?). Returns True in the case that the
+-- deck was already loaded.
+loadDeckByName :: String -> Kerchief Bool
+loadDeckByName name = getDeck >>= \case
+    Nothing -> loadDeckByName'
+    Just (Deck name' _ _)
+        | name == name' -> return True
+        | otherwise     -> loadDeckByName'
   where
-    -- A bit of a misnomer that, in the case of a successful readDeck, this
-    -- function delegates to "alreadyLoaded". This is because alreadyLoaded
-    -- simply calls setDeck, which is agnostic to whether or not the provided
-    -- deck is in loadedDecks (it sets the current deck and deletes from
-    -- loadedDecks either way).
-    notAlreadyLoaded :: Kerchief Bool
-    notAlreadyLoaded = liftIO (readDeck name) >>= maybe (return False) alreadyLoaded
+    loadDeckByName' :: Kerchief Bool
+    loadDeckByName' = liftIO (readDeck name) >>= maybe (return False) (\d -> loadDeck d >> return True)
 
-    alreadyLoaded :: Deck -> Kerchief Bool
-    alreadyLoaded d = setDeck d >> return True
-
+-- | Read a deck from file, by deck name.
 readDeck :: String -> IO (Maybe Deck)
-readDeck name = kerchiefDir name >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile
+readDeck name = kerchiefDir >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
 
--- | Write this deck to file, creating the file first if it doesn't exist.
-writeDeck :: Deck -> IO ()
-writeDeck deck = do
-    kerchiefDir (deck^.deckName) >>= \path ->
-        withBinaryFile path WriteMode $ \handle -> do
-            BS.hPut handle (encode deck)
-            hClose handle
+-- | Save the current deck to file, creating the file first if it doesn't exist.
+-- If there is no current deck, do nothing.
+saveDeck :: Kerchief ()
+saveDeck = getDeck >>= whenJust (liftIO . f)
+  where
+    f :: Deck -> IO ()
+    f deck@(Deck name _ _) = do
+        path <- (</> name) <$> kerchiefDir
+        withBinaryFile path WriteMode (`BS.hPut` encode deck)

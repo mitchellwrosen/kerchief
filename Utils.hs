@@ -6,6 +6,8 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (unless, void)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Foldable
+import System.Directory (getDirectoryContents)
+
 
 -- | Print each element of a Foldable, prepended by a number (starting at 1).
 printNumbered :: forall a t. (Show a, Foldable t) => t a -> IO ()
@@ -44,3 +46,10 @@ unless' = flip unless
 maybeThen :: Monad m => m a -> (b -> m c) -> Maybe b -> m a
 maybeThen thn _ Nothing  = thn
 maybeThen thn f (Just b) = f b >> thn
+
+whenJust :: Monad m => (a -> m b) -> Maybe a -> m ()
+whenJust _ Nothing  = return ()
+whenJust f (Just a) = f a >> return ()
+
+getDirectoryContents' :: FilePath -> IO [FilePath]
+getDirectoryContents' = fmap (filter (\a -> a /= "." && a/= "..")) . getDirectoryContents

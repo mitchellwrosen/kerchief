@@ -12,36 +12,24 @@ import Kerchief
 handleAdd :: [String] -> Kerchief ()
 handleAdd ["--help"]  = liftIO printAddUsage
 handleAdd [word]      = handleAddWord word
-handleAdd [word,deck] = handleAddWordDeck word deck
 handleAdd _           = liftIO printAddUsage
 
 printAddUsage :: IO ()
 printAddUsage = mapM_ putStrLn
-    [ "Usage: add word [deck]"
+    [ "Usage: add word"
     , ""
-    , "add /word/ to /deck/, or the current deck if"
-    , "/deck/ is absent"
+    , "look up |word|, pick a definition, and add it to the current deck"
+    , ""
     ]
 
 handleAddWord :: String -> Kerchief ()
 handleAddWord word = do
     loaded <- isDeckLoaded
     if loaded
-        then addWord word
-        else liftIO $ putStrLn "No deck selected. Use \"deck\", or the optional deck arg. See \"add --help\"."
-
-handleAddWordDeck :: String -> String -> Kerchief ()
-handleAddWordDeck word deck = do
-    loaded <- loadDeck deck
-    if loaded
-            then addWord word
-            else liftIO . putStrLn $ "Deck \"" ++ deck ++ "\" not found. Try \"ls decks/\" or \"deck --list\"."
-
--- TODO - offer to add the reverse card
-addWord :: String -> Kerchief ()
-addWord word = liftIO (lookupWord word) >>=
-    maybe (liftIO $ putStrLn "No definition found.")
-          (\entry -> liftIO (putStrLn "" >> print entry) >> pickDefinition entry)
+        then liftIO (lookupWord word) >>=
+            maybe (liftIO $ putStrLn "No definition found.")
+                  (\entry -> liftIO (putStrLn "" >> print entry) >> pickDefinition entry)
+        else liftIO $ putStrLn "No deck loaded. Try \"deck --help\"."
   where
     pickDefinition :: Entry -> Kerchief ()
     pickDefinition entry = do

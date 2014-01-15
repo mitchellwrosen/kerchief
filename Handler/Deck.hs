@@ -1,13 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Handler.Deck (handleDeck) where
 
 import Control.Monad.Trans (liftIO)
 
-import Deck (deckCards, newDeck)
-import Handler.Ls (handleLs)
+import Deck          (deckCards, newDeck)
+import Handler.Ls    (handleLs)
+import Handler.Utils (promptSaveCurrentDeck)
 import Kerchief
-import Utils (askYesNo, printNumbered, unless')
+import Utils         (askYesNo, printNumbered, unless')
 
 handleDeck :: [String] -> Kerchief ()
 handleDeck ["--help"]   = liftIO printDeckUsage
@@ -20,23 +19,25 @@ printDeckUsage :: IO ()
 printDeckUsage = mapM_ putStrLn
     [ "Usage: deck [name|--print|--list]"
     , ""
-    , "deck name: load (or create) deck /name/ and set it to be the current deck."
+    , "deck name: load (or create) deck |name| and set it to be the current deck"
     , "deck --print: print the cards in the current deck"
     , "deck --list: list all decks"
+    , ""
     ]
 
 handleDeckPrint :: Kerchief ()
 handleDeckPrint = getDeck >>= liftIO . maybe (putStrLn "No deck selected.") (printNumbered . deckCards)
 
 handleDeckName :: String -> Kerchief ()
-handleDeckName name = loadDeck name >>= unless' promptCreateNewDeck
+handleDeckName name = loadDeckByName name >>= unless' promptCreateNewDeck
   where
     promptCreateNewDeck :: Kerchief ()
     promptCreateNewDeck = askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
-                                   doCreateNewDeck
+                                   createAndLoadNewDeck
                                    (return ())
 
-    doCreateNewDeck :: Kerchief ()
-    doCreateNewDeck = do
-        setDeck (newDeck name)
+    createAndLoadNewDeck :: Kerchief ()
+    createAndLoadNewDeck = do
+        promptSaveCurrentDeck
+        loadDeck (newDeck name)
         liftIO . putStrLn $ "Deck \"" ++ name ++ "\" created."
