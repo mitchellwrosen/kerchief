@@ -2,37 +2,37 @@
 
 module Handler.Study (handleStudy) where
 
-import           Control.Lens        ((^.))
-import           Control.Monad.Trans (liftIO)
+import           Control.Lens   ((^.))
 
-import Card
-import Deck
-import Kerchief
-import Utils                         (randomElem)
+import           Card
+import           Deck
+import           Kerchief
+import           Utils          (io)
+import qualified Data.Set.Extra as S
 
 handleStudy :: [String] -> Kerchief ()
-handleStudy [] = getDeck >>= maybe (liftIO $ putStrLn "No deck loaded. Try \"deck --help\".") handleStudy'
-handleStudy _  = liftIO $ putStrLn "Usage: study"
+handleStudy [] = getDeck >>= maybe (io $ putStrLn "No deck loaded. Try \"load --help\".") handleStudy'
+handleStudy _  = io $ putStrLn "Usage: study"
 
 handleStudy' :: Deck -> Kerchief ()
-handleStudy' deck = liftIO (randomElem (deck^.deckDueCards)) >>= 
-    maybe (liftIO $ putStrLn "No cards due!") handleStudyCard
+handleStudy' deck = io (S.randomElem (deck^.deckDueCards)) >>= 
+    maybe (io $ putStrLn "No cards due!") handleStudyCard
 
 handleStudyCard :: Card -> Kerchief ()
 handleStudyCard card@(Card front back _ _) = do
-    liftIO $ putStrLn front
-    liftIO $ putStr "Press enter to continue, or input \"-\" to go back."
-    promptFeedback
+    io $ putStrLn front
+    io $ putStr "Press enter to continue, or input \"-\" to go back. "
+    io getLine >>= \case
+        "-" -> return ()
+        _   -> do
+            io $ putStrLn back
+            promptFeedback
   where
     promptFeedback :: Kerchief ()
     promptFeedback = do
-        liftIO getLine >>= \case
-            "-" -> return ()
-            _   -> do
-                liftIO $ putStrLn back
-                liftIO $ putStrLn "1 - easy, 2 - hard, 3 - wrong"
-                liftIO getLine >>= \case
-                    "1" -> modifyDeckIO (studyCard Easy card)
-                    "2" -> modifyDeckIO (studyCard Hard card)
-                    "3" -> modifyDeckIO (studyCard Wrong card)
-                    _   -> liftIO (putStrLn "Please enter a valid integer.") >> promptFeedback
+        io $ putStrLn "1 - easy, 2 - hard, 3 - wrong"
+        io getLine >>= \case
+            "1" -> modifyDeckIO (studyCard Easy card)
+            "2" -> modifyDeckIO (studyCard Hard card)
+            "3" -> modifyDeckIO (studyCard Wrong card)
+            _   -> io (putStrLn "Please enter a valid integer.") >> promptFeedback

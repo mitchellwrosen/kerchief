@@ -16,7 +16,7 @@ module Kerchief
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.State       (MonadState)
-import           Control.Monad.Trans       (MonadIO, liftIO)
+import           Control.Monad.Trans       (MonadIO)
 import           Control.Monad.Trans.State
 import qualified Data.ByteString           as BS
 import           Data.Serialize            (encode, decode)
@@ -25,7 +25,7 @@ import           System.IO
 
 import Config (kerchiefDir)
 import Deck
-import Utils  (catchNothing, eitherToMaybe, whenJust)
+import Utils  (catchNothing, eitherToMaybe, io, whenJust)
 
 data KerchiefState = KState
     { _ksDeck     :: Maybe Deck
@@ -69,7 +69,7 @@ modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()
 modifyDeckIO f = getDeck >>= \case
     Nothing -> return ()
     Just deck -> do
-        liftIO (f deck) >>= loadDeck
+        io (f deck) >>= loadDeck
         ksModified .= True
 
 -- | Load the given deck, given its name. Return whether or not the load was
@@ -83,7 +83,7 @@ loadDeckByName name = getDeck >>= \case
         | otherwise              -> loadDeckByName'
   where
     loadDeckByName' :: Kerchief Bool
-    loadDeckByName' = liftIO (readDeck name) >>= 
+    loadDeckByName' = io (readDeck name) >>= 
         maybe (return False) (\d -> loadDeck d >> return True)
 
 -- | Read a deck from file, by deck name. Also update it after reading, since
@@ -101,6 +101,6 @@ saveDeck = getDeck >>= whenJust saveDeck'
   where
     saveDeck' :: Deck -> Kerchief ()
     saveDeck' deck = do
-        path <- (</> deck^.deckName) <$> liftIO kerchiefDir
-        liftIO $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
+        path <- (</> deck^.deckName) <$> io kerchiefDir
+        io $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
         ksModified .= False

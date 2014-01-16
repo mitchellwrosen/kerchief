@@ -6,11 +6,12 @@ import           Control.Monad.Trans (liftIO)
 import           Data.Foldable       (mapM_)
 import           Data.Set            (Set)
 import qualified Data.Set            as S
+import qualified Data.Set.Extra      as S
 
 import           Card                (Card, showCard)
 import           Deck                (Deck, deckCards, removeCard, searchDeck)
 import           Kerchief            (Kerchief, getDeck, modifyDeck)
-import           Utils               (elemAt', printNumberedWith, reads')
+import           Utils               (printNumberedWith, reads')
 
 import Prelude hiding (mapM_)
 
@@ -47,7 +48,7 @@ handleRemoveWord word = getDeck >>= maybe noDeck yesDeck
                 "all" -> removeAll cards
                 s     -> maybe (liftIO (putStrLn "Please pick a valid integer.") >> loop cards)
                                doRemoveCard
-                               (reads' s >>= \n -> elemAt' (n-1) cards)
+                               (reads' s >>= \n -> S.safeElemAt (n-1) cards)
 
 -- index supplied is 1-based
 handleRemoveIndex :: Int -> Kerchief ()
@@ -56,7 +57,7 @@ handleRemoveIndex n = getDeck >>= maybe noDeck yesDeck
     yesDeck :: Deck -> Kerchief ()
     yesDeck deck = maybe (liftIO $ putStrLn "Please pick a valid integer.")
                          doRemoveCard
-                         (elemAt' (n-1) $ deckCards deck)
+                         (S.safeElemAt (n-1) $ deckCards deck)
 
 noDeck :: Kerchief ()
 noDeck = liftIO $ putStrLn "No deck loaded. Try \"deck --help\"."

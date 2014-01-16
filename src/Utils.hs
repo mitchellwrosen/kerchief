@@ -2,15 +2,11 @@
 
 module Utils where
 
-import           Control.Applicative ((<$>))
 import           Control.Exception   (SomeException, catch)
 import           Control.Monad       (foldM, unless)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Foldable       (Foldable, foldl)
-import           Data.Set            (Set)
-import qualified Data.Set            as S
 import           System.Directory    (getDirectoryContents)
-import           System.Random       (randomRIO)
 
 import Prelude hiding (foldl)
 
@@ -33,24 +29,20 @@ catchVoid = (`catch` (\(_ :: SomeException) -> return ()))
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe = either (const Nothing) Just
 
--- | Safe replacement for Data.Set's partial elemAt
-elemAt' :: Int -> Set a -> Maybe a
-elemAt' n s 
-    | n < 0 || n >= S.size s = Nothing
-    | otherwise              = Just (S.elemAt n s)
-
 getDirectoryContents' :: FilePath -> IO [FilePath]
 getDirectoryContents' = fmap (filter (\a -> a /= "." && a/= "..")) . getDirectoryContents
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM mb t f = mb >>= \b -> if b then t else f
 
+io :: MonadIO m => IO a -> m a
+io = liftIO
+
 -- | maybeThen a f m performs action |a| unconditionally, possibly preceded by
 -- action |f b| if |m| is Just b.
 maybeThen :: Monad m => m a -> (b -> m c) -> Maybe b -> m a
 maybeThen thn _ Nothing  = thn
 maybeThen thn f (Just b) = f b >> thn
-
 
 partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
 partitionM p = foldM (select p) ([],[])
@@ -79,11 +71,6 @@ showNumberedWith f = snd . foldl g (1,[])
   where
     g :: (Int,[String]) -> a -> (Int,[String])
     g (n,ss) a = (n+1, ss ++ [show n ++ ". " ++ f a])
-
-randomElem :: Set a -> IO (Maybe a)
-randomElem s 
-    | S.null s  = return Nothing
-    | otherwise = Just . flip S.elemAt s <$> randomRIO (0, S.size s)
 
 reads' :: Read a => String -> Maybe a
 reads' s = case reads s of
