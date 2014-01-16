@@ -1,18 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Deck 
-    ( Deck
-    , addCard
-    , addNewCard
-    , addNewTwoWayCard
-    , deckCards
-    , deckName
-    , newDeck
-    , removeCard
-    , searchDeck
-    , studyCard
-    , updateDeck
-    ) where
+module Deck where
 
 import           Control.Applicative
 import           Control.Lens
@@ -89,7 +77,6 @@ removeCard card deck =
         else deck & deckDoneCards %~ S.delete card
 
 -- | Study a card, which updates its timestamp and moves it from due to done.
---
 -- Not thread safe, because updating a card's timestamp is in IO.
 studyCard :: Feedback -> Card -> Deck -> IO Deck
 studyCard feedback card deck = do

@@ -1,4 +1,4 @@
-module Handler ( handleInput ) where
+module Handler (handleInput) where
 
 import Control.Monad.Trans (liftIO)
 
@@ -9,6 +9,7 @@ import Handler.Load
 import Handler.Print
 import Handler.Remove
 import Handler.Save
+import Handler.Study
 import Kerchief
 
 handleInput :: String -> Kerchief ()
@@ -21,4 +22,5 @@ handleInput line = case words line of
     "print"  : xs -> handlePrint xs
     "remove" : xs -> handleRemove xs
     "save"   : xs -> handleSave xs
+    "study"  : xs -> handleStudy xs
     _             -> liftIO $ putStrLn "Unknown command"

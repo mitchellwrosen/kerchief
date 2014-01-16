@@ -83,11 +83,16 @@ loadDeckByName name = getDeck >>= \case
         | otherwise              -> loadDeckByName'
   where
     loadDeckByName' :: Kerchief Bool
-    loadDeckByName' = liftIO (readDeck name) >>= maybe (return False) (\d -> loadDeck d >> return True)
+    loadDeckByName' = liftIO (readDeck name) >>= 
+        maybe (return False) (\d -> loadDeck d >> return True)
 
--- | Read a deck from file, by deck name.
+-- | Read a deck from file, by deck name. Also update it after reading, since
+-- this function is the single function with which decks are read from file.
 readDeck :: String -> IO (Maybe Deck)
-readDeck name = kerchiefDir >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
+readDeck name = do
+    kerchiefDir 
+        >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
+        >>= maybe (return Nothing) (fmap Just . updateDeck)
 
 -- | Save the current deck to file, creating the file first if it doesn't exist.
 -- If there is no current deck, do nothing.

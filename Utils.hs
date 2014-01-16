@@ -2,6 +2,7 @@
 
 module Utils where
 
+import           Control.Applicative ((<$>))
 import           Control.Exception   (SomeException, catch)
 import           Control.Monad       (unless)
 import           Control.Monad.Trans (MonadIO, liftIO)
@@ -9,6 +10,7 @@ import           Data.Foldable       (Foldable, foldl)
 import           Data.Set            (Set)
 import qualified Data.Set            as S
 import           System.Directory    (getDirectoryContents)
+import           System.Random       (randomRIO)
 
 import Prelude hiding (foldl)
 
@@ -76,3 +78,8 @@ elemAt' :: Int -> Set a -> Maybe a
 elemAt' n s 
     | n < 0 || n >= S.size s = Nothing
     | otherwise              = Just (S.elemAt n s)
+
+randomElem :: Set a -> IO (Maybe a)
+randomElem s 
+    | S.null s  = return Nothing
+    | otherwise = Just . flip S.elemAt s <$> randomRIO (0, S.size s)

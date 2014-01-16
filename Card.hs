@@ -15,7 +15,7 @@ import Data.Time.Instances    ()
 import Richards
 
 -- | User-supplied feedback for the difficulty of a card.
-data Feedback = Wrong | Hard | Easy
+data Feedback = Easy | Hard | Wrong
 
 data Card = Card
     { _cardFront       :: !String
@@ -63,9 +63,9 @@ newTwoWayCard front back = fmap (Card front back 0 &&& Card back front 0) getCur
 updateCard :: Feedback -> Card -> IO Card
 updateCard feedback card = do
     now <- getCurrentTime
-    return $ card &
-        (cardScore %~ score feedback) .
-        (cardLastStudied .~ now)
+    return $ card
+        & cardScore %~ score feedback
+        & cardLastStudied .~ now
   where
     score :: Feedback -> Int -> Int
     score Wrong = const 0 -- wrong guess resets score to zero
