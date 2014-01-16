@@ -43,7 +43,7 @@ newDeck name = Deck name S.empty S.empty
 -- in IO (getCurrentTime).
 updateDeck :: Deck -> IO Deck
 updateDeck deck = do
-    (ts,fs) <- partitionM isDue . S.toList $ deck ^. deckDueCards
+    (ts,fs) <- partitionM isDue . S.toList $ deck^.deckDoneCards
     return $ deck
         & deckDueCards  %~ S.union (S.fromList ts)
         & deckDoneCards .~ S.fromList fs
