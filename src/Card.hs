@@ -10,9 +10,9 @@ import Data.Monoid            ((<>))
 import Data.Serialize
 import Data.Time.Clock
 
-import Data.Dictionary.Google (Entry(..))
 import Data.Time.Instances    ()
 import Richards
+import Network.API.GoogleDictionary (Entry(..))
 
 -- | User-supplied feedback for the difficulty of a card.
 data Feedback = Easy | Hard | Wrong

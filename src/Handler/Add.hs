@@ -2,13 +2,13 @@
 
 module Handler.Add (handleAdd) where
 
-import Data.Dictionary.Google (Entry, lookupWord)
+import Network.API.GoogleDictionary (Entry, lookupWord)
 import Control.Monad.Trans
 
-import Card                   (Card, newCard, nthEntry, reverseCard)
+import Card                         (Card, newCard, nthEntry, reverseCard)
 import Deck
 import Kerchief
-import Utils                  (askYesNo)
+import Utils                        (askYesNo)
 
 -- TODO: "add front back" for making a new card, not from the dictionary
 handleAdd :: [String] -> Kerchief ()

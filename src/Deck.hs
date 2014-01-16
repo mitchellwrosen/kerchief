@@ -4,13 +4,13 @@ module Deck where
 
 import           Control.Applicative
 import           Control.Lens
-import           Control.Monad.Extras   (partitionM)
-import           Data.Monoid            -- ((<>))
+import           Data.Monoid            ((<>))
 import           Data.Serialize         (Serialize, get, put)
 import           Data.Set               (Set)
 import qualified Data.Set               as S
 
 import Card
+import Utils                            (partitionM)
 
 data Deck = Deck
     { _deckName      :: !String
