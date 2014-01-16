@@ -79,11 +79,13 @@ removeCard card deck =
 -- | Study a card, which updates its timestamp and moves it from due to done.
 -- Not thread safe, because updating a card's timestamp is in IO.
 studyCard :: Feedback -> Card -> Deck -> IO Deck
-studyCard feedback card deck = do
-    card' <- updateCard feedback card
-    return $ deck
-        & deckDueCards  %~ S.delete card' -- assumes card exists in due
-        & deckDoneCards %~ S.insert card'
+studyCard feedback card deck = flip studyCard' deck <$> updateCard feedback card
+
+-- | Variant of studyCard that takes an already-updated card and moves it from
+-- due to done.
+studyCard' :: Card -> Deck -> Deck
+studyCard' card deck = deck & deckDueCards  %~ S.delete card -- assumes card exists in due
+                            & deckDoneCards %~ S.insert card
 
 deckCards :: Deck -> Set Card
 deckCards (Deck _ x y) = x <> y

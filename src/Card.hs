@@ -2,16 +2,16 @@
 
 module Card where
 
-import Control.Arrow          ((&&&))
+import Control.Arrow                ((&&&))
 import Control.Applicative
 import Control.Lens
-import Data.List              (isInfixOf)
-import Data.Monoid            ((<>))
+import Data.List                    (isInfixOf)
+import Data.Monoid                  ((<>))
 import Data.Serialize
 import Data.Time.Clock
 
-import Data.Time.Instances    ()
-import Richards
+import Data.Time.Instances          ()
+{-import Richards-}
 import Network.API.GoogleDictionary (Entry(..))
 
 -- | User-supplied feedback for the difficulty of a card.
@@ -64,13 +64,13 @@ updateCard :: Feedback -> Card -> IO Card
 updateCard feedback card = do
     now <- getCurrentTime
     return $ card
-        & cardScore %~ score feedback
+        & cardScore       %~ scoreFeedback feedback
         & cardLastStudied .~ now
-  where
-    score :: Feedback -> Int -> Int
-    score Wrong = const 0 -- wrong guess resets score to zero
-    score Hard  = succ
-    score Easy  = succ . succ
+
+scoreFeedback :: Feedback -> Int -> Int
+scoreFeedback Wrong = const 0 -- wrong guess resets score to zero
+scoreFeedback Hard  = succ
+scoreFeedback Easy  = succ . succ
 
 -- | Create front/back text from the nth entry. Return Nothing if the index
 -- is out of bounds.
@@ -91,3 +91,21 @@ reverseCard (Card front back x y) = Card back front x y
 
 containsText :: String -> Card -> Bool
 containsText str (Card front back _ _) = isInfixOf str front || isInfixOf str back
+
+intervalAt :: Int -> NominalDiffTime
+intervalAt = intervalAt' . bound 0 20
+  where
+    intervalAt' :: Int -> NominalDiffTime
+    intervalAt' n = minutesToDiffTime (times !! n)
+
+    times :: [Float]
+    times = 1 : map (*2) times
+
+    minutesToDiffTime :: Float -> NominalDiffTime
+    minutesToDiffTime = realToFrac . secondsToDiffTime . floor . (*60)
+
+    bound :: Int -> Int -> Int -> Int
+    bound low high n 
+        | n < low = low
+        | n > high = high
+        | otherwise = n

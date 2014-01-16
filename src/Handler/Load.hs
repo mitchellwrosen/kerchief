@@ -1,18 +1,19 @@
 module Handler.Load (handleLoad) where
 
-import Control.Monad.Trans (liftIO)
+import Control.Lens ((^.))
 import Data.List           (intercalate)
+import qualified Data.Set as S
 
 import Config              (kerchiefDir)
-import Deck                (newDeck)
+import Deck                (deckCards, deckDueCards, newDeck)
 import Handler.Utils       (promptSaveCurrentDeck)
 import Kerchief
-import Utils               (askYesNo, getDirectoryContents')
+import Utils               (askYesNo, getDirectoryContents', io)
 
 handleLoad :: [String] -> Kerchief ()
-handleLoad ["--help"]   = liftIO printLoadUsage
+handleLoad ["--help"]   = io printLoadUsage
 handleLoad [name]       = handleLoadName name
-handleLoad _            = liftIO printLoadUsage
+handleLoad _            = io printLoadUsage
 
 printLoadUsage :: IO ()
 printLoadUsage = do
@@ -26,14 +27,18 @@ printLoadUsage = do
 handleLoadName :: String -> Kerchief ()
 handleLoadName name = do
     promptSaveCurrentDeck
-    loaded <- loadDeckByName name
-    if loaded
-        then liftIO . putStrLn $ "\"" ++ name ++ "\" loaded."
-        else askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
+    loadDeckByName name >>= 
+        maybe 
+            (askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
                       createAndLoadNewDeck
-                      (return ())
+                      (return ()))
+            (\deck -> do
+                let numDue = S.size (deck^.deckDueCards)
+                let totalCards = S.size (deckCards deck)
+                io . putStrLn $ 
+                    "\"" ++ name ++ "\" loaded. (" ++ show totalCards ++ "/" ++ show numDue ++ " cards due)")
   where
     createAndLoadNewDeck :: Kerchief ()
     createAndLoadNewDeck = do
         loadDeck (newDeck name)
-        liftIO . putStrLn $ "\"" ++ name ++ "\" created."
+        io . putStrLn $ "\"" ++ name ++ "\" created."

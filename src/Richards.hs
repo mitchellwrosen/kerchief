@@ -1,4 +1,5 @@
 -- | Carefully tuned sigmoid function
+-- Currently unused.
 module Richards where
 
 import Data.Time.Clock

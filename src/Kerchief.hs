@@ -72,25 +72,24 @@ modifyDeckIO f = getDeck >>= \case
         io (f deck) >>= loadDeck
         ksModified .= True
 
--- | Load the given deck, given its name. Return whether or not the load was
--- successful (i.e. does the deck exist?). Returns True in the case that the
--- deck was already loaded.
-loadDeckByName :: String -> Kerchief Bool
+-- | Load the given deck, given its name. Return the deck if the load
+-- was successful (i.e. does the deck exist?).
+loadDeckByName :: String -> Kerchief (Maybe Deck)
 loadDeckByName name = getDeck >>= \case
     Nothing -> loadDeckByName'
     Just deck
-        | name == deck^.deckName -> return True
+        | name == deck^.deckName -> return (Just deck)
         | otherwise              -> loadDeckByName'
   where
-    loadDeckByName' :: Kerchief Bool
-    loadDeckByName' = io (readDeck name) >>= 
-        maybe (return False) (\d -> loadDeck d >> return True)
+    loadDeckByName' :: Kerchief (Maybe Deck)
+    loadDeckByName' = io (readDeck name) >>=
+        maybe (return Nothing) (\d -> loadDeck d >> return (Just d))
 
 -- | Read a deck from file, by deck name. Also update it after reading, since
 -- this function is the single function with which decks are read from file.
 readDeck :: String -> IO (Maybe Deck)
 readDeck name = do
-    kerchiefDir 
+    kerchiefDir
         >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
         >>= maybe (return Nothing) (fmap Just . updateDeck)
 
