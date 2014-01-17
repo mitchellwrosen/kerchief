@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
 
 module Main where
 

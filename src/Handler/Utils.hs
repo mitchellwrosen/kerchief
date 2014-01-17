@@ -14,7 +14,7 @@ promptSaveCurrentDeck = getDeck >>= whenJust f
     f deck = do
         let name = deck^.deckName
         modified <- isModified
-        when modified $ do
+        when modified $
             askYesNo ("Save deck \"" ++ name ++ "\"? (y/n) ")
                      (saveDeck >> io (putStrLn $ "\"" ++ name ++ "\" saved."))
                      (return ())

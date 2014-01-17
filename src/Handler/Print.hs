@@ -1,15 +1,11 @@
 module Handler.Print (handlePrint) where
 
-import Control.Monad.Trans (liftIO)
-
 import Card          (showCard)
-import Deck          (deckCards, newDeck)
-import Handler.Ls    (handleLs)
-import Handler.Utils (promptSaveCurrentDeck)
+import Deck          (deckCards)
+import Handler.Utils (printNoDeckLoadedError)
 import Kerchief
-import Utils         (askYesNo, printNumberedWith, unless')
+import Utils         (io, printNumberedWith)
 
 handlePrint :: [String] -> Kerchief ()
-handlePrint [] = getDeck >>= liftIO . maybe (putStrLn "No deck loaded. Try \"deck --help\".")
-                                           (printNumberedWith showCard . deckCards)
-handlePrint _  = liftIO $ putStrLn "Usage: print"
+handlePrint [] = getDeck >>= maybe printNoDeckLoadedError (io . printNumberedWith showCard . deckCards)
+handlePrint _  = printNoDeckLoadedError
