@@ -2,13 +2,13 @@
 
 module Handler.Add (handleAdd) where
 
-import Network.API.GoogleDictionary (Entry, lookupWord)
+import Network.API.GoogleDictionary (Entry(..), lookupWord)
 import Control.Monad.Trans
 
 import Card                         (Card, newCard, nthEntry, reverseCard)
 import Deck
 import Kerchief
-import Utils                        (askYesNo)
+import Utils                        (askYesNo, showNumberedWith)
 
 -- TODO: "add front back" for making a new card, not from the dictionary
 handleAdd :: [String] -> Kerchief ()
@@ -28,9 +28,12 @@ handleAddWord word = do
     if loaded
         then liftIO (lookupWord word) >>=
             maybe (liftIO . putStrLn $ "No definition found for \"" ++ word ++ "\".")
-                  (\entry -> liftIO (putStrLn "" >> print entry) >> pickDefinition entry)
+                  (\entry -> liftIO (putStrLn $ showEntry entry) >> pickDefinition entry)
         else liftIO $ putStrLn "No deck loaded. See \"load --help\"."
   where
+    showEntry :: Entry -> String
+    showEntry (Entry w d) = unlines $ "" : w : showNumberedWith (\(pos,def) -> "(" ++ pos ++ ") " ++ def) d
+
     pickDefinition :: Entry -> Kerchief ()
     pickDefinition entry = do
         liftIO $ putStrLn "Which definition? (\"-\" to go back)"

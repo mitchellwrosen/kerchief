@@ -10,6 +10,7 @@ import           Data.Set               (Set)
 import qualified Data.Set               as S
 
 import Card
+import qualified Data.Set.Extra         as S
 import Utils                            (partitionM)
 
 data Deck = Deck
@@ -75,6 +76,12 @@ removeCard card deck =
     if S.member card (deck ^. deckDueCards)
         then deck & deckDueCards %~ S.delete card
         else deck & deckDoneCards %~ S.delete card
+
+modifyCard :: Card -> (Card -> Card) -> Deck -> Deck
+modifyCard card f deck 
+    | S.member card (deck^.deckDueCards)  = deck & deckDueCards  %~ S.modify card f
+    | S.member card (deck^.deckDoneCards) = deck & deckDoneCards %~ S.modify card f
+    | otherwise = deck
 
 -- | Study a card, which updates its timestamp and moves it from due to done.
 -- Not thread safe, because updating a card's timestamp is in IO.

@@ -83,4 +83,3 @@ unless' = flip unless
 whenJust :: Monad m => (a -> m b) -> Maybe a -> m ()
 whenJust _ Nothing  = return ()
 whenJust f (Just a) = f a >> return ()
-

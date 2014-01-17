@@ -67,10 +67,14 @@ updateCard feedback card = do
         & cardScore       %~ scoreFeedback feedback
         & cardLastStudied .~ now
 
+-- | Edit a card's contents while retaining its score and lastStudied time.
+setCardContents :: String -> String -> Card -> Card
+setCardContents front back card = card & cardFront .~ front & cardBack .~ back
+
 scoreFeedback :: Feedback -> Int -> Int
 scoreFeedback Wrong = const 0 -- wrong guess resets score to zero
-scoreFeedback Hard  = succ
-scoreFeedback Easy  = succ . succ
+scoreFeedback Hard  = id
+scoreFeedback Easy  = succ
 
 -- | Create front/back text from the nth entry. Return Nothing if the index
 -- is out of bounds.

@@ -15,7 +15,7 @@ handleLs [file]
 handleLs _              = putStrLn "Usage: ls [file]"
 
 filesStr :: String
-filesStr = "add  load  decks/  print  remove  save"
+filesStr = "add  edit  load  decks/  print  remove  save  study"
 
 files :: [String]
 files = words filesStr

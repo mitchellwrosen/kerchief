@@ -3,6 +3,7 @@ module Handler (handleInput) where
 import Control.Monad.Trans (liftIO)
 
 import Handler.Add
+import Handler.Edit
 import Handler.Exit
 import Handler.Ls
 import Handler.Load
@@ -15,7 +16,7 @@ import Kerchief
 handleInput :: String -> Kerchief ()
 handleInput line = case words line of
     "add"    : xs -> handleAdd xs
-    --"edit"   : xs -> handleEdit xs
+    "edit"   : xs -> handleEdit xs
     "exit"   : xs -> handleExit xs
     "ls"     : xs -> liftIO $ handleLs xs
     "load"   : xs -> handleLoad xs

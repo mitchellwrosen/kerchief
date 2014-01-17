@@ -36,7 +36,7 @@ handleLoadName name = do
                 let numDue = S.size (deck^.deckDueCards)
                 let totalCards = S.size (deckCards deck)
                 io . putStrLn $ 
-                    "\"" ++ name ++ "\" loaded. (" ++ show totalCards ++ "/" ++ show numDue ++ " cards due)")
+                    "\"" ++ name ++ "\" loaded. (" ++ show numDue ++ "/" ++ show totalCards ++ " cards due)")
   where
     createAndLoadNewDeck :: Kerchief ()
     createAndLoadNewDeck = do

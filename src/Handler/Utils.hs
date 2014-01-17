@@ -2,7 +2,6 @@ module Handler.Utils where
 
 import Control.Lens        ((^.))
 import Control.Monad       (when)
-import Control.Monad.Trans (liftIO)
 
 import Deck     (deckName)
 import Kerchief (Kerchief, getDeck, isModified, saveDeck)
@@ -17,5 +16,8 @@ promptSaveCurrentDeck = getDeck >>= whenJust f
         modified <- isModified
         when modified $ do
             askYesNo ("Save deck \"" ++ name ++ "\"? (y/n) ")
-                     (saveDeck >> liftIO (putStrLn $ "\"" ++ name ++ "\" saved."))
+                     (saveDeck >> io (putStrLn $ "\"" ++ name ++ "\" saved."))
                      (return ())
+
+printNoDeckLoadedError :: Kerchief ()
+printNoDeckLoadedError = io $ putStrLn "No deck loaded. Try \"load --help\"."
