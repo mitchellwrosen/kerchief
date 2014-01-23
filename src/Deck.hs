@@ -64,12 +64,6 @@ addCard card deck =
 addNewCard :: String -> String -> Deck -> IO Deck
 addNewCard front back deck = flip addCard deck <$> newCard front back
 
--- | Convenience method, combination of newTwoWayCard and addCard.
-addNewTwoWayCard :: String -> String -> Deck -> IO Deck
-addNewTwoWayCard front back deck = do
-    (c1,c2) <- newTwoWayCard front back
-    return $ addCard c2 (addCard c1 deck)
-
 -- | Remove a card from the deck.
 removeCard :: Card -> Deck -> Deck
 removeCard card deck =

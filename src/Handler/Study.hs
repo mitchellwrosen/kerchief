@@ -2,7 +2,7 @@
 
 module Handler.Study (handleStudy) where
 
-import Control.Lens             ((&))
+import Control.Lens
 import Data.Time.Clock
 import Data.List                (intercalate)
 
@@ -23,13 +23,13 @@ handleStudy' (Deck _ dueCards _) =
               handleStudyCard
 
 handleStudyCard :: Card -> Kerchief ()
-handleStudyCard card@(Card front back _ _) = do
-    io $ putStrLn front
+handleStudyCard card = do
+    io $ putStrLn (card^.cardFront)
     io $ putStr "Press enter to continue, or input \"-\" to go back. "
     io getLine >>= \case
         "-" -> return ()
         _   -> do
-            io $ putStrLn back
+            io $ putStrLn (card^.cardBack)
             promptFeedback
             handleStudy [] -- Keep studying until there are no cards due.
   where

@@ -1,8 +1,28 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Card where
+module Card 
+    ( 
+    -- * Card type
+      Card
+    , cardBack
+    , cardFront
+    , cardInterval
+    , cardLastStudied
+    , Feedback(..)
+    -- * Creating cards
+    , newCard
+    -- * Modifying cards
+    , reverseCard
+    , setCardContents
+    , updateCard
+    -- * Querying cards
+    , containsText
+    , isDue
+    , showCard
+    -- * TODO
+    , nthEntry
+    ) where
 
-import Control.Arrow                ((&&&))
 import Control.Applicative
 import Control.Lens
 import Data.List                    (isInfixOf)
@@ -11,70 +31,103 @@ import Data.Serialize
 import Data.Time.Clock
 
 import Data.Time.Instances          ()
-{-import Richards-}
 import Network.API.GoogleDictionary (Entry(..))
 
--- | User-supplied feedback for the difficulty of a card.
-data Feedback = Easy | Hard | Wrong
+import Sm2
+
+--
+-- Card type
+--
 
 data Card = Card
-    { _cardFront       :: !String
-    , _cardBack        :: !String
-    , _cardScore       :: !Int
-    , _cardLastStudied :: !UTCTime
+    { _cardFront          :: !String
+    , _cardBack           :: !String
+    , _cardLastStudied    :: !UTCTime
+    -- For SuperMemoable instance
+    , _cardEasinessFactor :: !EasinessFactor
+    , _cardIntervals      :: [Interval]
     } deriving Show
 makeLenses ''Card
 
--- | Compare cards on their contents, not score or timestamp.
+-- | User-supplied feedback on the difficulty of a card.
+data Feedback = Easy | Hard | Wrong
+
+-- Compare cards on their contents, not score or timestamp.
 instance Eq Card where
-    (Card f1 b1 _ _) == (Card f2 b2 _ _) = f1 == f2 && b1 == b2
+    (Card f1 b1 _ _ _) == (Card f2 b2 _ _ _) = f1 == f2 && b1 == b2
 
 instance Ord Card where
-    compare (Card f1 b1 _ _) (Card f2 b2 _ _) = compare f1 f2 <> compare b1 b2
+    compare (Card f1 b1 _ _ _) (Card f2 b2 _ _ _) = compare f1 f2 <> compare b1 b2
 
 instance Serialize Card where
-    put (Card front back score lastStudied) = put front >> put back >> put score >> put lastStudied
-    get = Card <$> get <*> get <*> get <*> get
+    put (Card a b c d e) = put a >> put b >> put c >> put d >> put e
+    get = Card <$> get <*> get <*> get <*> get <*> get
 
--- | Show instance for pretty-printing to console.
-showCard :: Card -> String
-showCard (Card front back _ _) = "[Front] " ++ front ++ " [Back] " ++ back
+instance SuperMemoable Card where
+    smFactor    = cardEasinessFactor
+    smIntervals = cardIntervals
 
--- | Check if a card is due for studying.
+--
+-- Creating cards
+--
+
+-- | Create a new 'Card' with the given front/back content.
+newCard :: String -> String -> IO Card
+newCard front back = updateTimestamp $ initializeSuperMemo 
+    (Card front back undefined undefined undefined) -- undefineds are set immediately
+
+-- Set a card's last-studied-time to now.
+updateTimestamp :: Card -> IO Card
+updateTimestamp card = (\time -> set cardLastStudied time card) <$> getCurrentTime
+
+--
+-- Modifying cards
+--
+
+-- | Reverse a 'Card' 's back and front.
+reverseCard :: Card -> Card
+reverseCard card = card & cardFront .~ (card^.cardBack)
+                        & cardBack  .~ (card^.cardFront)
+
+-- | Set a 'Card' 's front/back contents.
+setCardContents :: String -> String -> Card -> Card
+setCardContents front back card = card & cardFront .~ front & cardBack .~ back
+
+-- | Update a 'Card', given user 'Feedback'. Also updates its last-studied
+-- timestamp, hence IO.
+updateCard :: Feedback -> Card -> IO Card
+updateCard feedback = updateTimestamp . sm2 (feedbackToResponse feedback)
+  where
+    -- Translate a Feedback (defined here) to a Response (SuperMemo)
+    feedbackToResponse :: Feedback -> Response
+    feedbackToResponse Easy  = Response5
+    feedbackToResponse Hard  = Response3
+    feedbackToResponse Wrong = Response0
+
+--
+-- Querying cards
+--
+
+-- | Calculate the interval after which this 'Card' is due.
+cardInterval :: Card -> NominalDiffTime
+cardInterval card = realToFrac $ secondsToDiffTime (days * 86400)
+  where
+    days :: Integer
+    days = fromIntegral (smInterval card)
+
+-- | Search a 'Card' 's contents for the given 'String'.
+containsText :: String -> Card -> Bool
+containsText str (Card front back _ _ _) = isInfixOf str front || isInfixOf str back
+
+-- | Check if this 'Card' is due for studying.
 isDue :: Card -> IO Bool
 isDue card = do
     now <- getCurrentTime
     return $ diffUTCTime now (card ^. cardLastStudied) > cardInterval card
 
--- | Calculate the interval after which a card is due.
-cardInterval :: Card -> NominalDiffTime
-cardInterval (Card _ _ score _) = intervalAt score
-
--- | Create a new card.
-newCard :: String -> String -> IO Card
-newCard front back = Card front back 0 <$> getCurrentTime
-
--- | Create a new two-way card (both front-back and back-front)
-newTwoWayCard :: String -> String -> IO (Card, Card)
-newTwoWayCard front back = fmap (Card front back 0 &&& Card back front 0) getCurrentTime
-
--- | Update a card's score, given a feedback. Also reset its last studied time
--- to now.
-updateCard :: Feedback -> Card -> IO Card
-updateCard feedback card = do
-    now <- getCurrentTime
-    return $ card
-        & cardScore       %~ scoreFeedback feedback
-        & cardLastStudied .~ now
-
--- | Edit a card's contents while retaining its score and lastStudied time.
-setCardContents :: String -> String -> Card -> Card
-setCardContents front back card = card & cardFront .~ front & cardBack .~ back
-
-scoreFeedback :: Feedback -> Int -> Int
-scoreFeedback Wrong = const 0 -- wrong guess resets score to zero
-scoreFeedback Hard  = id
-scoreFeedback Easy  = succ
+-- | Alternative Show instance that shows front/back contents.
+showCard :: Card -> String
+showCard (Card front back _ _ _) = "[Front] " ++ front ++ "\n [Back] " ++ back
 
 -- | Create front/back text from the nth entry. Return Nothing if the index
 -- is out of bounds.
@@ -87,29 +140,3 @@ nthEntry n entry
     word       = entryWord entry
     front      = word ++ " (" ++ pos ++ ")"
     (pos,back) = ds !! n
-
--- | Get this reverse of the given card (at least, "reverse" as far as the Eq
--- instance is concerned).
-reverseCard :: Card -> Card
-reverseCard (Card front back x y) = Card back front x y
-
-containsText :: String -> Card -> Bool
-containsText str (Card front back _ _) = isInfixOf str front || isInfixOf str back
-
-intervalAt :: Int -> NominalDiffTime
-intervalAt = intervalAt' . bound 0 20
-  where
-    intervalAt' :: Int -> NominalDiffTime
-    intervalAt' n = minutesToDiffTime (times !! n)
-
-    times :: [Float]
-    times = 1 : map (*2) times
-
-    minutesToDiffTime :: Float -> NominalDiffTime
-    minutesToDiffTime = realToFrac . secondsToDiffTime . floor . (*60)
-
-    bound :: Int -> Int -> Int -> Int
-    bound low high n 
-        | n < low = low
-        | n > high = high
-        | otherwise = n
