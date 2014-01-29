@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Data.Time.Instances where
 
 import Control.Applicative

@@ -1,6 +1,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
-module Sm2 where
+module SuperMemo2 where
 
 import Control.Lens
 
@@ -18,8 +18,9 @@ data Response
     deriving Enum -- don't change the ordering of these, because of this
 
 -- | A SuperMemoable has a Lens on both an EasinessFactor and an [Interval].
--- The [Interval] is a reverse-order list of days representing the entire
--- history of the
+-- These are implementation details and shouldn't be touched, except by
+-- 'superMemo2'. Always call 'initializeSuperMemo' once before running the
+-- algorithm.
 class SuperMemoable a where
     smFactor    :: Lens' a EasinessFactor
     smIntervals :: Lens' a [Interval]
@@ -34,12 +35,12 @@ smInterval m = head (m^.smIntervals)
 initializeSuperMemo :: SuperMemoable a => a -> a
 initializeSuperMemo = (smFactor .~ 2.5) . (smIntervals .~ [])
 
--- | Given a Response, update a SuperMemoable. @initializeSuperMemo@ should be
+-- | Given a Response, update a SuperMemoable. 'initializeSuperMemo' should be
 -- called before calling this function for the first time.
 --
 -- See http://www.supermemo.com/english/ol/sm2.htm for more information.
-sm2 :: SuperMemoable a => Response -> a -> a
-sm2 (fromEnum -> q) m
+superMemo2 :: SuperMemoable a => Response -> a -> a
+superMemo2 (fromEnum -> q) m
     | q < 3 = m & smIntervals .~ []
     | otherwise = m & smIntervals .~ newIntervals
                     & smFactor    .~ newFactor
@@ -54,8 +55,11 @@ sm2 (fromEnum -> q) m
         xs@(x:_) -> (ceiling $ fromIntegral x * efactor) : xs
 
     newFactor :: EasinessFactor
-    newFactor = max 1.3 newFactor'
+    newFactor = bound 1.3 2.5 newFactor'
       where
+        bound :: Ord a => a -> a -> a -> a
+        bound theMin theMax = min theMax . max theMin
+
         newFactor' :: EasinessFactor
         newFactor' = efactor + 0.1 - (5-q')*(0.08 + (5-q')*0.02)
 

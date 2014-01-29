@@ -8,6 +8,7 @@ module Card
     , cardFront
     , cardInterval
     , cardLastStudied
+    , cardSoundUrl
     , Feedback(..)
     -- * Creating cards
     , newCard
@@ -20,20 +21,20 @@ module Card
     , isDue
     , showCard
     -- * TODO
-    , nthEntry
+    {-, nthEntry-}
     ) where
 
 import Control.Applicative
 import Control.Lens
-import Data.List                    (isInfixOf)
-import Data.Monoid                  ((<>))
+import Data.List           (isInfixOf)
+import Data.Monoid         ((<>))
 import Data.Serialize
-import Data.Time.Clock
+import Data.Time.Clock     (NominalDiffTime, UTCTime, diffUTCTime, getCurrentTime, secondsToDiffTime)
+import Data.Time.LocalTime ()
 
-import Data.Time.Instances          ()
-import Network.API.GoogleDictionary (Entry(..))
+import Data.Time.Instances ()
 
-import Sm2
+import SuperMemo2
 
 --
 -- Card type
@@ -42,6 +43,7 @@ import Sm2
 data Card = Card
     { _cardFront          :: !String
     , _cardBack           :: !String
+    , _cardSoundUrl       :: Maybe String
     , _cardLastStudied    :: !UTCTime
     -- For SuperMemoable instance
     , _cardEasinessFactor :: !EasinessFactor
@@ -54,14 +56,14 @@ data Feedback = Easy | Hard | Wrong
 
 -- Compare cards on their contents, not score or timestamp.
 instance Eq Card where
-    (Card f1 b1 _ _ _) == (Card f2 b2 _ _ _) = f1 == f2 && b1 == b2
+    (Card f1 b1 _ _ _ _) == (Card f2 b2 _ _ _ _) = f1 == f2 && b1 == b2
 
 instance Ord Card where
-    compare (Card f1 b1 _ _ _) (Card f2 b2 _ _ _) = compare f1 f2 <> compare b1 b2
+    compare (Card f1 b1 _ _ _ _) (Card f2 b2 _ _ _ _) = compare f1 f2 <> compare b1 b2
 
 instance Serialize Card where
-    put (Card a b c d e) = put a >> put b >> put c >> put d >> put e
-    get = Card <$> get <*> get <*> get <*> get <*> get
+    put (Card a b c d e f) = put a >> put b >> put c >> put d >> put e >> put f
+    get = Card <$> get <*> get <*> get <*> get <*> get <*> get
 
 instance SuperMemoable Card where
     smFactor    = cardEasinessFactor
@@ -71,10 +73,10 @@ instance SuperMemoable Card where
 -- Creating cards
 --
 
--- | Create a new 'Card' with the given front/back content.
-newCard :: String -> String -> IO Card
-newCard front back = updateTimestamp $ initializeSuperMemo 
-    (Card front back undefined undefined undefined) -- undefineds are set immediately
+-- | Create a new 'Card' with the given front, back, and sound URL.
+newCard :: String -> String -> Maybe String -> IO Card
+newCard front back soundUrl = updateTimestamp $ initializeSuperMemo 
+    (Card front back soundUrl undefined undefined undefined) -- undefineds are set immediately
 
 -- Set a card's last-studied-time to now.
 updateTimestamp :: Card -> IO Card
@@ -96,7 +98,7 @@ setCardContents front back card = card & cardFront .~ front & cardBack .~ back
 -- | Update a 'Card', given user 'Feedback'. Also updates its last-studied
 -- timestamp, hence IO.
 updateCard :: Feedback -> Card -> IO Card
-updateCard feedback = updateTimestamp . sm2 (feedbackToResponse feedback)
+updateCard feedback = updateTimestamp . superMemo2 (feedbackToResponse feedback)
   where
     -- Translate a Feedback (defined here) to a Response (SuperMemo)
     feedbackToResponse :: Feedback -> Response
@@ -117,7 +119,7 @@ cardInterval card = realToFrac $ secondsToDiffTime (days * 86400)
 
 -- | Search a 'Card' 's contents for the given 'String'.
 containsText :: String -> Card -> Bool
-containsText str (Card front back _ _ _) = isInfixOf str front || isInfixOf str back
+containsText str (Card front back _ _ _ _) = isInfixOf str front || isInfixOf str back
 
 -- | Check if this 'Card' is due for studying.
 isDue :: Card -> IO Bool
@@ -127,16 +129,4 @@ isDue card = do
 
 -- | Alternative Show instance that shows front/back contents.
 showCard :: Card -> String
-showCard (Card front back _ _ _) = "[Front] " ++ front ++ "\n [Back] " ++ back
-
--- | Create front/back text from the nth entry. Return Nothing if the index
--- is out of bounds.
-nthEntry :: Int -> Entry -> Maybe (String, String)
-nthEntry n entry
-    | n < 0 || n >= length ds = Nothing
-    | otherwise               = Just (front, back)
-  where
-    ds         = entryData entry
-    word       = entryWord entry
-    front      = word ++ " (" ++ pos ++ ")"
-    (pos,back) = ds !! n
+showCard (Card front back _ _ _ _) = "[Front] " ++ front ++ "\n [Back] " ++ back

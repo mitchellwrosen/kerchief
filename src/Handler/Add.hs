@@ -5,15 +5,15 @@ module Handler.Add (handleAdd) where
 import Control.Applicative          ((<$>), (<*>), (<|>), (<$), (*>), many)
 import Control.Monad                (join)
 import Network.API.GoogleDictionary (Entry(..), lookupWord)
-import Text.Parsec                  (parse)
+import Text.Parsec                  (ParseError, parse)
 import Text.Parsec.Char             (char, noneOf, spaces)
 import Text.Parsec.Combinator       (between, choice)
 import Text.Parsec.String           (Parser)
 
-import Card                         (Card, newCard, nthEntry, reverseCard)
+import Card                         (Card, newCard, reverseCard)
 import Deck
 import Kerchief
-import Utils                        (askYesNo, io, showNumberedWith)
+import Utils                        (askYesNo, io, printNumberedWith, reads')
 
 handleAdd :: [String] -> Kerchief ()
 handleAdd ["--help"]  = io printAddUsage
@@ -33,43 +33,51 @@ handleAddWord :: String -> Kerchief ()
 handleAddWord word = do
     loaded <- isDeckLoaded
     if loaded
-        then io (lookupWord word) >>=
-            maybe (io . putStrLn $ "No definition found for \"" ++ word ++ "\".")
-                  (\entry -> io (putStrLn $ showEntry entry) >> pickDefinition entry)
+        then io (lookupWord word) >>= undefined -- selectEntry
         else io $ putStrLn "No deck loaded. See \"load --help\"."
+
+selectEntry :: [Entry] -> Kerchief ()
+selectEntry [] = io . putStrLn $ "No definition found."
+selectEntry es = do
+    io $ printNumberedWith (\(Entry word def mpos phonetic _) -> 
+        word ++ " " ++ phonetic ++ maybe " " (\pos -> " (" ++ pos ++ ") ") mpos ++ def) es
+    io $ putStrLn "Which definition? (\"-\" to go back)"
+    io getLine >>= \case
+        "-" -> io $ putStrLn "No card added."
+        s   -> maybe badInput selectEntry' (reads' s)
   where
-    showEntry :: Entry -> String
-    showEntry (Entry w d) = unlines $ "" : w : showNumberedWith (\(pos,def) -> "(" ++ pos ++ ") " ++ def) d
+    selectEntry' :: Int -> Kerchief ()
+    selectEntry' n
+        | n < 1 || n > length es = badInput
+        | otherwise = doAddCard (entryToFront entry) (entryDefinition entry) (entrySoundUrl entry)
+      where
+        entry :: Entry
+        entry = es !! (n-1)
 
-    pickDefinition :: Entry -> Kerchief ()
-    pickDefinition entry = do
-        io $ putStrLn "Which definition? (\"-\" to go back)"
-        io getLine >>= \case
-            "-" -> io $ putStrLn "No card added."
-            s   -> pickDefinition' entry (reads s)
+    badInput :: Kerchief ()
+    badInput = io (putStrLn "Please pick a valid integer.") >> selectEntry es
 
-    pickDefinition' :: Entry -> [(Int,String)] -> Kerchief ()
-    pickDefinition' entry [(n,"")] = maybe (bad entry) doAddCard (nthEntry (n-1) entry)
-    pickDefinition' entry _        = bad entry
-
-    bad :: Entry -> Kerchief ()
-    bad entry = io (putStrLn "Please pick a valid integer.") >> pickDefinition entry
-
-doAddCard :: (String, String) -> Kerchief ()
-doAddCard (front,back) = do
-    card <- io $ newCard front back
+doAddCard :: String -> String -> Maybe String -> Kerchief ()
+doAddCard front back soundUrl = do
+    card <- io $ newCard front back soundUrl
     doAddCard' card
     askYesNo "Add reverse card as well? (y/n) "
              (doAddCard' $ reverseCard card)
              (return ())
   where
-      doAddCard' :: Card -> Kerchief ()
-      doAddCard' card = do
-          modifyDeck $ addCard card
-          io $ putStrLn "Card added."
+    doAddCard' :: Card -> Kerchief ()
+    doAddCard' card = do
+        modifyDeck $ addCard card
+        io $ putStrLn "Card added."
 
 handleAddFrontBack :: String -> Kerchief ()
-handleAddFrontBack = either (const $ io printAddUsage) doAddCard . parse parseFrontBack ""
+handleAddFrontBack = either left right . parse parseFrontBack ""
+  where
+    left :: ParseError -> Kerchief ()
+    left _ = io printAddUsage
+
+    right :: (String, String) -> Kerchief ()
+    right (front, back) = doAddCard front back Nothing
 
 parseFrontBack :: Parser (String, String)
 parseFrontBack = (,) <$> parseQuotedString <*> (spaces *> parseQuotedString)
@@ -92,3 +100,6 @@ parseQuotedString = quoted $ many stringChar
     codes, replacements :: [Char]
     codes        = ['b',  'n',  'f',  'r',  't',  '\\', '\"', '/']
     replacements = ['\b', '\n', '\f', '\r', '\t', '\\', '\"', '/']
+
+entryToFront :: Entry -> String
+entryToFront (Entry word defn mpos phonetic _) = word ++ " " ++ phonetic ++ maybe "" (\pos -> " (" ++ pos++")") mpos

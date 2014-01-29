@@ -18,10 +18,12 @@ executable kerchief
   main-is: Main.hs
   other-modules: Card
                , Config
+               , Data.Set.Extra
                , Data.Time.Instances
                , Deck
                , Handler
                , Handler.Add
+               , Handler.Edit
                , Handler.Exit
                , Handler.Load
                , Handler.Ls
@@ -30,22 +32,25 @@ executable kerchief
                , Handler.Save
                , Handler.Study
                , Handler.Utils
+               , Kerchief
+               , SuperMemo2
+               , Utils
   other-extensions: LambdaCase
                   , ScopedTypeVariables
                   , ViewPatterns
                   , TemplateHaskell
                   , GeneralizedNewtypeDeriving
   build-depends: base                 ==4.*
-               , time                 >=1.4   && <1.5
-               , filepath             >=1.3   && <1.4
-               , directory            >=1.2   && <1.3
-               , mtl                  >=2.1   && <2.2
-               , lens                 >=3.10  && <3.11
-               , cereal               >=0.4   && <0.5
-               , containers           >=0.5.2 && <0.6
-               , transformers         >=0.3   && <0.4
-               , bytestring           >=0.10  && <0.11
-               , google-dictionary    >=0.1   && <0.2
+               , time                 >=1.4     && <1.5
+               , filepath             >=1.3     && <1.4
+               , directory            >=1.2     && <1.3
+               , mtl                  >=2.1     && <2.2
+               , lens                 >=3.10    && <3.11
+               , cereal               >=0.4     && <0.5
+               , containers           >=0.5.2   && <0.6
+               , transformers         >=0.3     && <0.4
+               , bytestring           >=0.10    && <0.11
+               , google-dictionary    >=0.1.0.2 && <0.2
                , parsec
                , random               >=1.0   && <1.1
   hs-source-dirs: src
