@@ -17,4 +17,5 @@ doPrint :: Deck -> Kerchief ()
 doPrint deck = do
     let (numDue, totalCards) = dueRatio deck
     putStrLn $ show numDue ++ "/" ++ show totalCards ++ " cards due"
-    printNumberedWith showCard . deckCards $ deck
+    {-printNumberedWith showCard . deckCards $ deck-}
+    printNumberedWith show . deckCards $ deck

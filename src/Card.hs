@@ -21,8 +21,6 @@ module Card
     , containsText
     , isDue
     , showCard
-    -- * TODO
-    {-, nthEntry-}
     ) where
 
 import Control.Applicative

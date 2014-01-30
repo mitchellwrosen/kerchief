@@ -5,13 +5,15 @@ module Handler.Study (handleStudy) where
 import Kerchief.Prelude
 
 import Data.Time.Clock
-import Data.List                (intercalate)
+import Data.List                    (intercalate)
 
 import           Card
-import           Deck
-import           Handler.Utils  (printNoDeckLoadedError)
-import           Kerchief
 import qualified Data.Set.Extra as S
+import           Deck
+import           Handler.Utils      (printNoDeckLoadedError)
+import           Kerchief
+import           Mp3                (playMp3Url)
+import           Network.HTTP.Extra (getResponseBody')
 
 import Prelude hiding (getLine, putStr, putStrLn)
 
@@ -38,7 +40,7 @@ handleStudy' shouldUpdate deck =
         putStr "Enter to continue, \"p\" to play soundbyte, \"-\" to go back. "
         getLine >>= \case
             "p" -> maybe (putStrLn "No soundbyte available." >> handleStudyCard card)
-                         (\url -> io (playSoundUrl url) >> handleStudyCard card)
+                         (\url -> io (playMp3Url url) >> handleStudyCard card)
                          (card^.cardFrontSoundUrl)
             "-" -> return deck
             _   -> do
@@ -67,9 +69,6 @@ handleStudy' shouldUpdate deck =
                     "2" -> return $ studyCard' hard deck
                     "3" -> return $ studyCard' wrong deck
                     _   -> putStrLn "Please input 1, 2, or 3." >> promptFeedback' easy hard wrong
-
-playSoundUrl :: String -> IO ()
-playSoundUrl _ = return ()
 
 prettyPrintDiffTime :: NominalDiffTime -> String
 prettyPrintDiffTime = inner . ceiling

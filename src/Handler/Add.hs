@@ -61,7 +61,7 @@ handleAddWord' word deck = io (lookupWord word) >>= selectEntry >>= setDeck . ($
 
 doAddCard :: String -> String -> Maybe String -> Kerchief (Deck -> Deck)
 doAddCard front back soundUrl = do
-    card <- io $ newCard front Nothing back soundUrl
+    card <- io $ newCard front soundUrl back Nothing
     putStrLn "Card added."
     (addCard card .) <$>
         askYesNo "Add reverse card as well? (y/n) "
