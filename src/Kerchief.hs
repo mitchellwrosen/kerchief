@@ -6,8 +6,7 @@ module Kerchief
     , isDeckLoaded
     , isModified
     , loadDeck
-    {-, modifyDeck-}
-    {-, modifyDeckIO-}
+    , newDeck
     , runKerchief
     , saveDeck
     , setDeck
@@ -54,24 +53,14 @@ isModified = use ksModified
 -- | Overwrite the current deck without saving it.
 setDeck :: Deck -> Kerchief ()
 setDeck deck = do
-    ksDeck .= Just deck
+    ksDeck     .= Just deck
     ksModified .= False
 
--- | Modify the current deck.
-{-modifyDeck :: (Deck -> Deck) -> Kerchief ()-}
-{-modifyDeck f = getDeck >>= \case-}
-    {-Nothing   -> return ()-}
-    {-Just deck -> do-}
-        {-setDeck (f deck)-}
-        {-ksModified .= True-}
-
-{--- | Modify the current deck with an IO action.-}
-{-modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()-}
-{-modifyDeckIO f = getDeck >>= \case-}
-    {-Nothing -> return ()-}
-    {-Just deck -> do-}
-        {-io (f deck) >>= setDeck-}
-        {-ksModified .= True-}
+-- | Create a new deck with the given name.
+newDeck :: String -> Kerchief ()
+newDeck name = do
+    ksDeck     .= Just (emptyDeck name)
+    ksModified .= True
 
 -- | Load the given deck, given its name. Return the deck if the load
 -- was successful (i.e. does the deck exist?).

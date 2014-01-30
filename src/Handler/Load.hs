@@ -7,9 +7,9 @@ import           Data.List (intercalate)
 import qualified Data.Set  as S
 
 import Config              (kerchiefDir)
-import Deck                (deckCards, deckDueCards, newDeck)
+import Deck                (deckCards, deckDueCards)
 import Handler.Utils       (promptSaveCurrentDeck)
-import Kerchief            (Kerchief, loadDeck, setDeck)
+import Kerchief            (Kerchief, loadDeck, newDeck, setDeck)
 import Utils               (askYesNo, getDirectoryContents')
 
 handleLoad :: [String] -> Kerchief ()
@@ -32,7 +32,7 @@ handleLoadName name = do
     loadDeck name >>= 
         maybe 
             (askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
-                      createAndLoadNewDeck
+                      createDeck
                       (return ()))
             (\deck -> do
                 let numDue = S.size (deck^.deckDueCards)
@@ -40,7 +40,7 @@ handleLoadName name = do
                 putStrLn $ 
                     "\"" ++ name ++ "\" loaded. (" ++ show numDue ++ "/" ++ show totalCards ++ " cards due)")
   where
-    createAndLoadNewDeck :: Kerchief ()
-    createAndLoadNewDeck = do
-        setDeck (newDeck name)
+    createDeck :: Kerchief ()
+    createDeck = do
+        newDeck name
         putStrLn $ "\"" ++ name ++ "\" created."

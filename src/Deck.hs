@@ -31,8 +31,8 @@ instance Serialize Deck where
     put (Deck name due done) = put name >> put due >> put done
     get = Deck <$> get <*> get <*> get
 
-newDeck :: String -> Deck
-newDeck name = Deck name S.empty S.empty
+emptyDeck :: String -> Deck
+emptyDeck name = Deck name S.empty S.empty
 
 -- | Update a deck to reflect the current time, by moving the appropriate cards
 -- from done to due.
