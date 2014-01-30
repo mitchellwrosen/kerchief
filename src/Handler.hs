@@ -1,11 +1,8 @@
 module Handler (handleInput) where
 
-import Control.Monad.Trans (liftIO)
-
 import Handler.Add
 import Handler.Edit
 import Handler.Exit
-import Handler.Ls
 import Handler.Load
 import Handler.Print
 import Handler.Remove
@@ -13,15 +10,18 @@ import Handler.Save
 import Handler.Study
 import Kerchief
 
+import Utils (io)
+
 handleInput :: String -> Kerchief ()
 handleInput line = case words line of
     "add"    : xs -> handleAdd xs
     "edit"   : xs -> handleEdit xs
     "exit"   : xs -> handleExit xs
-    "ls"     : xs -> liftIO $ handleLs xs
     "load"   : xs -> handleLoad xs
     "print"  : xs -> handlePrint xs
-    "remove" : xs -> handleRemove xs
+    "rename" : xs -> io (putStrLn "TODO")
+    "rm"     : xs -> handleRemove xs
+    "rmdeck" : xs -> io (putStrLn "TODO")
     "save"   : xs -> handleSave xs
     "study"  : xs -> handleStudy xs
-    _             -> liftIO $ putStrLn "Unknown command"
+    _             -> io $ putStrLn "Unknown command"

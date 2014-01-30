@@ -26,7 +26,6 @@ executable kerchief
                , Handler.Edit
                , Handler.Exit
                , Handler.Load
-               , Handler.Ls
                , Handler.Print
                , Handler.Remove
                , Handler.Save

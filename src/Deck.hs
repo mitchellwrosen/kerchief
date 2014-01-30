@@ -61,8 +61,8 @@ addCard card deck =
     doneCards = deck ^. deckDoneCards
 
 -- | Convenience method, combination of newCard and addCard.
-addNewCard :: String -> String -> Maybe String -> Deck -> IO Deck
-addNewCard front back soundUrl deck = flip addCard deck <$> newCard front back soundUrl
+addNewCard :: String -> Maybe String -> String -> Maybe String -> Deck -> IO Deck
+addNewCard front frontSound back backSound  deck = flip addCard deck <$> newCard front frontSound back backSound
 
 -- | Remove a card from the deck.
 removeCard :: Card -> Deck -> Deck

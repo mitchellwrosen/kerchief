@@ -59,7 +59,7 @@ selectEntry es = do
 
 doAddCard :: String -> String -> Maybe String -> Kerchief ()
 doAddCard front back soundUrl = do
-    card <- io $ newCard front back soundUrl
+    card <- io $ newCard front soundUrl back Nothing
     doAddCard' card
     askYesNo "Add reverse card as well? (y/n) "
              (doAddCard' $ reverseCard card)
