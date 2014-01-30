@@ -2,6 +2,9 @@
 
 module Main where
 
+import Kerchief.Prelude
+import Prelude hiding (putStrLn)
+
 import Control.Applicative ((<$>))
 import Control.Lens        ((^.))
 import Control.Monad       (forever)
@@ -12,7 +15,7 @@ import Config              (kerchiefDir)
 import Deck                (deckName)
 import Handler             (handleInput)
 import Kerchief            (getDeck, runKerchief)
-import Utils               (io, prompt)
+import Utils               (prompt)
 
 main :: IO ()
 main = do

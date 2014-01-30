@@ -25,10 +25,12 @@ class SuperMemoable a where
     smFactor    :: Lens' a EasinessFactor
     smIntervals :: Lens' a [Interval]
 
--- | Get the current inter-repetition interval. Querying for this value is
--- undefined until sm2 has been run at least once.
+-- | Get the current inter-repetition interval.
 smInterval :: SuperMemoable a => a -> Interval
-smInterval m = head (m^.smIntervals)
+smInterval = smInterval' . (^.smIntervals)
+  where
+    smInterval' []    = 0
+    smInterval' (x:_) = x
 
 -- | Initialize a SuperMemoable. This is necessary before running sm2 for the
 -- first time.

@@ -23,6 +23,7 @@ executable kerchief
                , Deck
                , Handler
                , Handler.Add
+               , Handler.Decks
                , Handler.Edit
                , Handler.Exit
                , Handler.Load

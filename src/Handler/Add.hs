@@ -2,8 +2,8 @@
 
 module Handler.Add (handleAdd) where
 
-import Control.Applicative          ((<$>), (<*>), (<|>), (<$), (*>), many)
-import Control.Monad                (join)
+import Kerchief.Prelude
+
 import Network.API.GoogleDictionary (Entry(..), lookupWord)
 import Text.Parsec                  (ParseError, parse)
 import Text.Parsec.Char             (char, noneOf, spaces)
@@ -12,8 +12,11 @@ import Text.Parsec.String           (Parser)
 
 import Card                         (Card, newCard, reverseCard)
 import Deck
+import Handler.Utils                (printNoDeckLoadedError)
 import Kerchief
-import Utils                        (askYesNo, io, printNumberedWith, reads')
+import Utils                        (askYesNo, printNumberedWith, reads')
+
+import Prelude hiding (getLine, putStr, putStrLn)
 
 handleAdd :: [String] -> Kerchief ()
 handleAdd ["--help"]  = io printAddUsage
@@ -30,54 +33,52 @@ printAddUsage = mapM_ putStrLn
     ]
 
 handleAddWord :: String -> Kerchief ()
-handleAddWord word = do
-    loaded <- isDeckLoaded
-    if loaded
-        then io (lookupWord word) >>= undefined -- selectEntry
-        else io $ putStrLn "No deck loaded. See \"load --help\"."
+handleAddWord word = getDeck >>= maybe printNoDeckLoadedError (handleAddWord' word)
 
-selectEntry :: [Entry] -> Kerchief ()
-selectEntry [] = io . putStrLn $ "No definition found."
-selectEntry es = do
-    io $ printNumberedWith (\(Entry word def mpos phonetic _) -> 
-        word ++ " " ++ phonetic ++ maybe " " (\pos -> " (" ++ pos ++ ") ") mpos ++ def) es
-    io $ putStrLn "Which definition? (\"-\" to go back)"
-    io getLine >>= \case
-        "-" -> io $ putStrLn "No card added."
-        s   -> maybe badInput selectEntry' (reads' s)
+handleAddWord' :: String -> Deck -> Kerchief ()
+handleAddWord' word deck = io (lookupWord word) >>= selectEntry >>= setDeck . ($ deck)
   where
-    selectEntry' :: Int -> Kerchief ()
-    selectEntry' n
-        | n < 1 || n > length es = badInput
-        | otherwise = doAddCard (entryToFront entry) (entryDefinition entry) (entrySoundUrl entry)
+    selectEntry :: [Entry] -> Kerchief (Deck -> Deck)
+    selectEntry [] = putStrLn "No definition found." >> return id
+    selectEntry es = do
+        printNumberedWith (\(Entry word def mpos phonetic _) -> 
+            word ++ " " ++ phonetic ++ maybe " " (\pos -> " (" ++ pos ++ ") ") mpos ++ def) es
+        putStrLn "Which definition? (\"-\" to go back)"
+        getLine >>= \case
+            "-" -> putStrLn "No card added." >> return id
+            s   -> maybe badInput selectEntry' (reads' s)
       where
-        entry :: Entry
-        entry = es !! (n-1)
+        selectEntry' :: Int -> Kerchief (Deck -> Deck)
+        selectEntry' n
+            | n < 1 || n > length es = badInput
+            | otherwise = doAddCard (entryToFront entry) (entryDefinition entry) (entrySoundUrl entry)
+          where
+            entry :: Entry
+            entry = es !! (n-1)
 
-    badInput :: Kerchief ()
-    badInput = io (putStrLn "Please pick a valid integer.") >> selectEntry es
+        badInput :: Kerchief (Deck -> Deck)
+        badInput = putStrLn "Please pick a valid integer." >> selectEntry es
 
-doAddCard :: String -> String -> Maybe String -> Kerchief ()
+doAddCard :: String -> String -> Maybe String -> Kerchief (Deck -> Deck)
 doAddCard front back soundUrl = do
-    card <- io $ newCard front soundUrl back Nothing
-    doAddCard' card
-    askYesNo "Add reverse card as well? (y/n) "
-             (doAddCard' $ reverseCard card)
-             (return ())
-  where
-    doAddCard' :: Card -> Kerchief ()
-    doAddCard' card = do
-        modifyDeck $ addCard card
-        io $ putStrLn "Card added."
+    card <- io $ newCard front Nothing back soundUrl
+    putStrLn "Card added."
+    (addCard card .) <$>
+        askYesNo "Add reverse card as well? (y/n) "
+                 (return $ addCard (reverseCard card))
+                 (return id)
 
 handleAddFrontBack :: String -> Kerchief ()
-handleAddFrontBack = either left right . parse parseFrontBack ""
+handleAddFrontBack line = getDeck >>= maybe printNoDeckLoadedError (handleAddFrontBack' line)
+
+handleAddFrontBack' :: String -> Deck -> Kerchief ()
+handleAddFrontBack' line deck = either left right . parse parseFrontBack "" $ line
   where
     left :: ParseError -> Kerchief ()
     left _ = io printAddUsage
 
     right :: (String, String) -> Kerchief ()
-    right (front, back) = doAddCard front back Nothing
+    right (front, back) = doAddCard front back Nothing >>= setDeck . ($ deck)
 
 parseFrontBack :: Parser (String, String)
 parseFrontBack = (,) <$> parseQuotedString <*> (spaces *> parseQuotedString)

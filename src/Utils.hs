@@ -2,13 +2,14 @@
 
 module Utils where
 
-import           Control.Exception   (SomeException, catch)
-import           Control.Monad       (foldM, unless)
-import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Foldable       (Foldable, foldl)
-import           System.Directory    (getDirectoryContents)
+import Control.Exception   (SomeException, catch)
+import Control.Monad       (foldM, unless)
+import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Foldable       (Foldable, foldl)
+import System.Directory    (getDirectoryContents)
 
-import Prelude hiding (foldl)
+import Kerchief.Prelude (getLine, putStr, putStrLn)
+import Prelude hiding (foldl, getLine, putStr, putStrLn)
 
 askYesNo :: MonadIO m => String -> m a -> m a -> m a
 askYesNo s yes no = liftIO (prompt s) >>= \case
@@ -18,7 +19,7 @@ askYesNo s yes no = liftIO (prompt s) >>= \case
     "n"   -> no
     "N"   -> no
     "no"  -> no
-    _     -> liftIO (putStrLn "Please input \"y\" or \"n\".") >> askYesNo s yes no
+    _     -> putStrLn "Please input \"y\" or \"n\"." >> askYesNo s yes no
 
 catchNothing :: IO (Maybe a) -> IO (Maybe a)
 catchNothing = (`catch` (\(_ :: SomeException) -> return Nothing))
@@ -34,9 +35,6 @@ getDirectoryContents' = fmap (filter (\a -> a /= "." && a/= "..")) . getDirector
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM mb t f = mb >>= \b -> if b then t else f
-
-io :: MonadIO m => IO a -> m a
-io = liftIO
 
 -- | maybeThen a f m performs action |a| unconditionally, possibly preceded by
 -- action |f b| if |m| is Just b.
@@ -57,10 +55,10 @@ partitionM p = foldM (select p) ([],[])
 printNumbered :: (Show a, Foldable t) => t a -> IO ()
 printNumbered = printNumberedWith show
 
-printNumberedWith :: Foldable t => (a -> String) -> t a -> IO ()
+printNumberedWith :: (MonadIO m, Foldable t) => (a -> String) -> t a -> m ()
 printNumberedWith f = mapM_ putStrLn . showNumberedWith f
 
-prompt :: String -> IO String
+prompt :: MonadIO m => String -> m String
 prompt s = putStr s >> getLine
 
 showNumbered :: (Show a, Foldable t) => t a -> [String]

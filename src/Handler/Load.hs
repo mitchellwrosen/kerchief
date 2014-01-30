@@ -1,14 +1,16 @@
 module Handler.Load (handleLoad) where
 
-import Control.Lens ((^.))
-import Data.List           (intercalate)
-import qualified Data.Set as S
+import Kerchief.Prelude 
+import Prelude hiding (putStr, putStrLn)
+
+import           Data.List (intercalate)
+import qualified Data.Set  as S
 
 import Config              (kerchiefDir)
 import Deck                (deckCards, deckDueCards, newDeck)
 import Handler.Utils       (promptSaveCurrentDeck)
-import Kerchief
-import Utils               (askYesNo, getDirectoryContents', io)
+import Kerchief            (Kerchief, loadDeck, setDeck)
+import Utils               (askYesNo, getDirectoryContents')
 
 handleLoad :: [String] -> Kerchief ()
 handleLoad ["--help"]   = io printLoadUsage
@@ -27,7 +29,7 @@ printLoadUsage = do
 handleLoadName :: String -> Kerchief ()
 handleLoadName name = do
     promptSaveCurrentDeck
-    loadDeckByName name >>= 
+    loadDeck name >>= 
         maybe 
             (askYesNo ("Create deck \"" ++ name ++ "\"? (y/n) ")
                       createAndLoadNewDeck
@@ -35,10 +37,10 @@ handleLoadName name = do
             (\deck -> do
                 let numDue = S.size (deck^.deckDueCards)
                 let totalCards = S.size (deckCards deck)
-                io . putStrLn $ 
+                putStrLn $ 
                     "\"" ++ name ++ "\" loaded. (" ++ show numDue ++ "/" ++ show totalCards ++ " cards due)")
   where
     createAndLoadNewDeck :: Kerchief ()
     createAndLoadNewDeck = do
-        loadDeck (newDeck name)
-        io . putStrLn $ "\"" ++ name ++ "\" created."
+        setDeck (newDeck name)
+        putStrLn $ "\"" ++ name ++ "\" created."

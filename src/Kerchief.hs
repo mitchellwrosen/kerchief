@@ -6,11 +6,11 @@ module Kerchief
     , isDeckLoaded
     , isModified
     , loadDeck
-    , loadDeckByName
-    , modifyDeck
-    , modifyDeckIO
+    {-, modifyDeck-}
+    {-, modifyDeckIO-}
     , runKerchief
     , saveDeck
+    , setDeck
     ) where
 
 import           Control.Applicative
@@ -23,9 +23,10 @@ import           Data.Serialize            (encode, decode)
 import           System.FilePath           ((</>))
 import           System.IO
 
-import Config (kerchiefDir)
-import Deck
-import Utils  (catchNothing, eitherToMaybe, io, whenJust)
+import           Config                    (kerchiefDir)
+import           Deck
+import           Kerchief.Prelude          (io)
+import           Utils                     (catchNothing, eitherToMaybe, whenJust)
 
 data KerchiefState = KState
     { _ksDeck     :: Maybe Deck
@@ -51,39 +52,39 @@ isModified :: Kerchief Bool
 isModified = use ksModified
 
 -- | Overwrite the current deck without saving it.
-loadDeck :: Deck -> Kerchief ()
-loadDeck deck = do
+setDeck :: Deck -> Kerchief ()
+setDeck deck = do
     ksDeck .= Just deck
     ksModified .= False
 
 -- | Modify the current deck.
-modifyDeck :: (Deck -> Deck) -> Kerchief ()
-modifyDeck f = getDeck >>= \case
-    Nothing   -> return ()
-    Just deck -> do
-        loadDeck (f deck)
-        ksModified .= True
+{-modifyDeck :: (Deck -> Deck) -> Kerchief ()-}
+{-modifyDeck f = getDeck >>= \case-}
+    {-Nothing   -> return ()-}
+    {-Just deck -> do-}
+        {-setDeck (f deck)-}
+        {-ksModified .= True-}
 
--- | Modify the current deck with an IO action.
-modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()
-modifyDeckIO f = getDeck >>= \case
-    Nothing -> return ()
-    Just deck -> do
-        io (f deck) >>= loadDeck
-        ksModified .= True
+{--- | Modify the current deck with an IO action.-}
+{-modifyDeckIO :: (Deck -> IO Deck) -> Kerchief ()-}
+{-modifyDeckIO f = getDeck >>= \case-}
+    {-Nothing -> return ()-}
+    {-Just deck -> do-}
+        {-io (f deck) >>= setDeck-}
+        {-ksModified .= True-}
 
 -- | Load the given deck, given its name. Return the deck if the load
 -- was successful (i.e. does the deck exist?).
-loadDeckByName :: String -> Kerchief (Maybe Deck)
-loadDeckByName name = getDeck >>= \case
-    Nothing -> loadDeckByName'
+loadDeck :: String -> Kerchief (Maybe Deck)
+loadDeck name = getDeck >>= \case
+    Nothing -> loadDeck'
     Just deck
         | name == deck^.deckName -> return (Just deck)
-        | otherwise              -> loadDeckByName'
+        | otherwise              -> loadDeck'
   where
-    loadDeckByName' :: Kerchief (Maybe Deck)
-    loadDeckByName' = io (readDeck name) >>=
-        maybe (return Nothing) (\d -> loadDeck d >> return (Just d))
+    loadDeck' :: Kerchief (Maybe Deck)
+    loadDeck' = io (readDeck name) >>=
+        maybe (return Nothing) (\d -> setDeck d >> return (Just d))
 
 -- | Read a deck from file, by deck name. Also update it after reading, since
 -- this function is the single function with which decks are read from file.

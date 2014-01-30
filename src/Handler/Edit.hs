@@ -2,17 +2,21 @@
 
 module Handler.Edit (handleEdit) where
 
-import           Data.Foldable       (mapM_)
+import Kerchief.Prelude
+
+import           Control.Applicative ((<$))
+import           Data.Foldable       (foldlM)
 import           Data.Set            (Set)
 import qualified Data.Set            as S
 import qualified Data.Set.Extra      as S
 
 import           Card                (Card, setCardContents, showCard)
 import           Deck                (Deck, deckCards, modifyCard, searchDeck)
-import           Kerchief            (Kerchief, getDeck, modifyDeck)
-import           Utils               (askYesNo, io, printNumberedWith, reads')
+import           Handler.Utils       (printNoDeckLoadedError)
+import           Kerchief            (Kerchief, getDeck, setDeck)
+import           Utils               (askYesNo, printNumberedWith, prompt, reads')
 
-import Prelude hiding (mapM_)
+import Prelude hiding (putStr, putStrLn, getLine)
 
 handleEdit :: [String] -> Kerchief ()
 handleEdit ["--help"]  = io printEditUsage
@@ -27,58 +31,46 @@ printEditUsage = mapM_ putStrLn
     ]
 
 handleEditWord :: String -> Kerchief ()
-handleEditWord word = getDeck >>= maybe noDeck yesDeck
+handleEditWord word = getDeck >>= maybe printNoDeckLoadedError handleEditWord'
   where
-    yesDeck :: Deck -> Kerchief ()
-    yesDeck deck = do
+    handleEditWord' :: Deck -> Kerchief ()
+    handleEditWord' deck = do
         let cards = searchDeck word deck
         if S.null cards
-            then io $ putStrLn "No matching cards found."
-            else loop cards
-      where
-        -- "loop" only so long as the user is inputting bad data.
-        loop :: Set Card -> Kerchief ()
-        loop cards = do
-            io $ putStrLn "Matching cards found:"
-            io $ printNumberedWith showCard cards
-            io $ putStr "Edit which card? (\"-\" to go back, \"all\" to edit all) "
-            io getLine >>= \case
-                "-"   -> io $ putStrLn "No cards editd."
-                "all" -> editAll cards
-                s     -> maybe (io (putStrLn "Please pick a valid integer.") >> loop cards)
-                               promptContents
-                               (reads' s >>= \n -> S.safeElemAt (n-1) cards)
+            then putStrLn "No matching cards found."
+            else promptEditCards cards >>= setDeck . ($ deck)
+
+-- loop only so long as the user is inputting bad data.
+promptEditCards :: Set Card -> Kerchief (Deck -> Deck)
+promptEditCards cards = do
+    putStrLn "Matching cards found:"
+    printNumberedWith showCard cards
+    putStr "Edit which card? (\"-\" to go back, \"all\" to edit all) "
+    getLine >>= \case
+        "-"   -> putStrLn "No cards edited." >> return id
+        "all" -> foldlM (\f card -> (f .) <$> promptEditCard card) id cards
+        s     -> maybe (putStrLn "Please pick a valid integer." >> promptEditCards cards)
+                       promptEditCard
+                       (reads' s >>= \n -> S.safeElemAt (n-1) cards)
+
+promptEditCard :: Card -> Kerchief (Deck -> Deck)
+promptEditCard card = do
+    putStrLn $ showCard card
+    newFront <- prompt "Front: "
+    newBack  <- prompt "Back: "
+
+    askYesNo "Really edit card? (y/n) "
+             (modifyCard card (setCardContents newFront newBack) <$ putStrLn "Card edited.")
+             (id <$ putStrLn "Card not edited.")
 
 -- index supplied is 1-based
 handleEditIndex :: Int -> Kerchief ()
-handleEditIndex n = getDeck >>= maybe noDeck promptIndex
+handleEditIndex n = getDeck >>= maybe printNoDeckLoadedError promptIndex
   where
     promptIndex :: Deck -> Kerchief ()
-    promptIndex deck = maybe (io $ putStrLn "Please pick a valid integer.")
-                             promptContents
+    promptIndex deck = promptIndex' >>= setDeck . ($ deck)
+      where 
+        promptIndex' :: Kerchief (Deck -> Deck)
+        promptIndex' = maybe (putStrLn "Please pick a valid integer." >> return id)
+                             promptEditCard
                              (S.safeElemAt (n-1) $ deckCards deck)
-
-noDeck :: Kerchief ()
-noDeck = io $ putStrLn "No deck loaded. Try \"load --help\"."
-
-promptContents :: Card -> Kerchief ()
-promptContents card = do
-    io . putStrLn $ showCard card
-
-    io $ putStr "Front: "
-    newFront <- io getLine
-
-    io $ putStr "Back: "
-    newBack <- io getLine
-
-    askYesNo "Really edit card? (y/n) "
-             (doEditCard card newFront newBack)
-             (io $ putStrLn "Card not edited.")
-
-doEditCard :: Card -> String -> String -> Kerchief ()
-doEditCard card front back = do
-    modifyDeck $ modifyCard card $ setCardContents front back
-    io $ putStrLn "Card edited."
-
-editAll :: Set Card -> Kerchief ()
-editAll = mapM_ promptContents

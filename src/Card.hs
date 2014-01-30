@@ -35,7 +35,9 @@ import Data.Time.LocalTime ()
 
 import Data.Time.Instances ()
 
-import SuperMemo2
+import SuperMemo2          ( EasinessFactor, Interval, Response(..), SuperMemoable, initializeSuperMemo, smFactor
+                           , smInterval, smIntervals, superMemo2
+                           )
 
 --
 -- Card type
@@ -46,9 +48,9 @@ data Card = Card
     , _cardFrontSoundUrl  :: Maybe String
     , _cardBack           :: !String
     , _cardBackSoundUrl   :: Maybe String
-    , _cardLastStudied    :: !UTCTime
+    , _cardLastStudied    :: UTCTime
     -- For SuperMemoable instance
-    , _cardEasinessFactor :: !EasinessFactor
+    , _cardEasinessFactor :: EasinessFactor
     , _cardIntervals      :: [Interval]
     } deriving Show
 makeLenses ''Card
@@ -77,12 +79,22 @@ instance SuperMemoable Card where
 
 -- | Create a new 'Card' with the given front, back, and sound URL.
 newCard :: String -> Maybe String -> String -> Maybe String -> IO Card
-newCard front frontSound back backSound = updateTimestamp $ initializeSuperMemo
-    (Card front frontSound back backSound undefined undefined undefined) -- undefineds are set immediately
+newCard front frontSound back backSound = do
+    now <- getCurrentTime
+    return . initializeSuperMemo $ Card
+        { _cardFront          = front
+        , _cardFrontSoundUrl  = frontSound
+        , _cardBack           = back
+        , _cardBackSoundUrl   = backSound
+        , _cardLastStudied    = now
+        -- These two are set by initializeSuperMemo
+        , _cardEasinessFactor = 0
+        , _cardIntervals      = []
+        } 
 
 -- Set a card's last-studied-time to now.
 updateTimestamp :: Card -> IO Card
-updateTimestamp card = (\time -> set cardLastStudied time card) <$> getCurrentTime
+updateTimestamp card = (\time -> card & cardLastStudied .~ time) <$> getCurrentTime
 
 --
 -- Modifying cards
@@ -134,4 +146,4 @@ isDue card = do
 
 -- | Alternative Show instance that shows front/back contents.
 showCard :: Card -> String
-showCard (Card front _ back _ _ _ _) = "[Front] " ++ front ++ "\n [Back] " ++ back
+showCard (Card front _ back _ _ _ _) = "[Front] " ++ front ++ " [Back] " ++ back

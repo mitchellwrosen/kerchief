@@ -2,70 +2,87 @@
 
 module Handler.Study (handleStudy) where
 
-import Control.Lens
+import Kerchief.Prelude
+
 import Data.Time.Clock
 import Data.List                (intercalate)
 
 import           Card
 import           Deck
+import           Handler.Utils  (printNoDeckLoadedError)
 import           Kerchief
-import           Utils          (io)
 import qualified Data.Set.Extra as S
 
+import Prelude hiding (getLine, putStr, putStrLn)
+
 handleStudy :: [String] -> Kerchief ()
-handleStudy [] = getDeck >>= maybe (io $ putStrLn "No deck loaded. Try \"load --help\".") handleStudy'
-handleStudy _  = io $ putStrLn "Usage: study"
+handleStudy [] = getDeck >>= \case
+    Nothing -> printNoDeckLoadedError
+    Just deck -> handleStudy' True deck >>= setDeck >> putStrLn "No cards due!"
+handleStudy _  = putStrLn "Usage: study"
 
-handleStudy' :: Deck -> Kerchief ()
-handleStudy' (Deck _ dueCards _) =
-    io (S.randomElem (dueCards)) >>=
-        maybe (io $ putStrLn "No cards due!")
+-- True if the deck should be updated when dueCards runs out,
+-- False if the deck has already been updated and thus there really are no
+-- due cards.
+handleStudy' :: Bool -> Deck -> Kerchief Deck
+handleStudy' shouldUpdate deck =
+    io (S.randomElem (deck^.deckDueCards)) >>=
+        maybe (if shouldUpdate 
+                   then io (updateDeck deck) >>= handleStudy' False
+                   else return deck)
               handleStudyCard
-
-handleStudyCard :: Card -> Kerchief ()
-handleStudyCard card = do
-    io $ putStrLn (card^.cardFront)
-    io $ putStr "Press enter to continue, or input \"-\" to go back. "
-    io getLine >>= \case
-        "-" -> return ()
-        _   -> do
-            io $ putStrLn (card^.cardBack)
-            promptFeedback
-            handleStudy [] -- Keep studying until there are no cards due.
   where
-    promptFeedback :: Kerchief ()
-    promptFeedback = do
-        cardEasy  <- io $ updateCard Easy card
-        cardHard  <- io $ updateCard Hard card
-        cardWrong <- io $ updateCard Wrong card
-        let cardEasyInterval  = cardInterval cardEasy
-        let cardHardInterval  = cardInterval cardHard
-        let cardWrongInterval = cardInterval cardWrong
-
-        io . putStrLn $ "1 - easy ("  ++ prettyPrintDiffTime cardEasyInterval  ++ "), " ++
-                        "2 - hard ("  ++ prettyPrintDiffTime cardHardInterval  ++ "), " ++
-                        "3 - wrong (" ++ prettyPrintDiffTime cardWrongInterval ++ ")"
-
-        loop cardEasy cardHard cardWrong
+    handleStudyCard :: Card -> Kerchief Deck
+    handleStudyCard card = do
+        putStrLn (card^.cardFront)
+        putStr "Enter to continue, \"p\" to play soundbyte, \"-\" to go back. "
+        getLine >>= \case
+            "p" -> maybe (putStrLn "No soundbyte available." >> handleStudyCard card)
+                         (\url -> io (playSoundUrl url) >> handleStudyCard card)
+                         (card^.cardFrontSoundUrl)
+            "-" -> return deck
+            _   -> do
+                putStrLn (card^.cardBack)
+                io promptFeedback >>= handleStudy' True -- Keep studying until there are no cards due.
       where
-        loop :: Card -> Card -> Card -> Kerchief ()
-        loop easy hard wrong =
-            io getLine >>= \case
-                "1" -> modifyDeck (studyCard' easy)
-                "2" -> modifyDeck (studyCard' hard)
-                "3" -> modifyDeck (studyCard' wrong)
-                _   -> io (putStrLn "Please input 1, 2, or 3.") >> loop easy hard wrong
+        promptFeedback :: IO Deck
+        promptFeedback = do
+            cardEasy  <- updateCard Easy card
+            cardHard  <- updateCard Hard card
+            cardWrong <- updateCard Wrong card
+            let cardEasyInterval  = cardInterval cardEasy
+            let cardHardInterval  = cardInterval cardHard
+            let cardWrongInterval = cardInterval cardWrong
+
+            putStrLn $ "1 - easy ("  ++ prettyPrintDiffTime cardEasyInterval  ++ "), " ++
+                       "2 - hard ("  ++ prettyPrintDiffTime cardHardInterval  ++ "), " ++
+                       "3 - wrong (" ++ prettyPrintDiffTime cardWrongInterval ++ ")"
+
+            promptFeedback' cardEasy cardHard cardWrong
+          where
+            promptFeedback' :: Card -> Card -> Card -> IO Deck
+            promptFeedback' easy hard wrong =
+                getLine >>= \case
+                    "1" -> return $ studyCard' easy deck
+                    "2" -> return $ studyCard' hard deck
+                    "3" -> return $ studyCard' wrong deck
+                    _   -> putStrLn "Please input 1, 2, or 3." >> promptFeedback' easy hard wrong
+
+playSoundUrl :: String -> IO ()
+playSoundUrl _ = return ()
 
 prettyPrintDiffTime :: NominalDiffTime -> String
 prettyPrintDiffTime = inner . ceiling
   where
     inner :: Integer -> String
-    inner n = [(months,"months"), (days,"days"), (hours,"hours"), (minutes,"minutes")]
-        & filter (\(num,_) -> num > 0) -- Don't show empty amounts (e.g. drop "0 months")
-        & take 2                       -- Only show two units of accuracy
-        & map disp
-        & intercalate ", "
+    inner n = case inner' of
+        [] -> "now"
+        xs -> intercalate ", " . map disp . take 2 $ xs -- only show 2 units of accuracy
       where
+        inner' :: [(Integer, String)]
+        inner' = filter (\(num,_) -> num > 0) -- Don't show empty amounts (e.g. drop "0 months")
+                     [(months,"months"), (days,"days"), (hours,"hours"), (minutes,"minutes")]
+
         (months,  o) = n `divMod` 2592000
         (days,    p) = o `divMod` 86400
         (hours,   q) = p `divMod` 3600

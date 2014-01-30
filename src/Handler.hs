@@ -1,6 +1,10 @@
 module Handler (handleInput) where
 
+import Kerchief.Prelude
+import Prelude hiding (putStrLn)
+
 import Handler.Add
+import Handler.Decks
 import Handler.Edit
 import Handler.Exit
 import Handler.Load
@@ -10,18 +14,17 @@ import Handler.Save
 import Handler.Study
 import Kerchief
 
-import Utils (io)
-
 handleInput :: String -> Kerchief ()
 handleInput line = case words line of
     "add"    : xs -> handleAdd xs
+    "decks"  : xs -> handleDecks xs
     "edit"   : xs -> handleEdit xs
     "exit"   : xs -> handleExit xs
     "load"   : xs -> handleLoad xs
     "print"  : xs -> handlePrint xs
-    "rename" : xs -> io (putStrLn "TODO")
+    "rename" : xs -> putStrLn "TODO"
     "rm"     : xs -> handleRemove xs
-    "rmdeck" : xs -> io (putStrLn "TODO")
+    "rmdeck" : xs -> putStrLn "TODO"
     "save"   : xs -> handleSave xs
     "study"  : xs -> handleStudy xs
-    _             -> io $ putStrLn "Unknown command"
+    _             -> putStrLn "Unknown command"

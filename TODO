@@ -4,3 +4,4 @@
 - handle: deck file bad format
 - remove deck
 - rename deck
+- cycle wrong cards in current study session
