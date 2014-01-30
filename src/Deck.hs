@@ -94,3 +94,7 @@ deckCards (Deck _ x y) = x <> y
 -- | Search a deck's cards (both front and back) for a specific string.
 searchDeck :: String -> Deck -> Set Card
 searchDeck str = S.filter (containsText str) . deckCards
+
+-- | Convenience method to get the due/total counts.
+dueRatio :: Deck -> (Int,Int)
+dueRatio deck = (S.size (deck^.deckDueCards), S.size (deckCards deck))

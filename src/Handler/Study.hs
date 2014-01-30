@@ -18,7 +18,7 @@ import Prelude hiding (getLine, putStr, putStrLn)
 handleStudy :: [String] -> Kerchief ()
 handleStudy [] = getDeck >>= \case
     Nothing -> printNoDeckLoadedError
-    Just deck -> handleStudy' True deck >>= setDeck >> putStrLn "No cards due!"
+    Just deck -> handleStudy' True deck >>= setDeck
 handleStudy _  = putStrLn "Usage: study"
 
 -- True if the deck should be updated when dueCards runs out,
@@ -29,7 +29,7 @@ handleStudy' shouldUpdate deck =
     io (S.randomElem (deck^.deckDueCards)) >>=
         maybe (if shouldUpdate 
                    then io (updateDeck deck) >>= handleStudy' False
-                   else return deck)
+                   else putStrLn "No cards due!" >> return deck)
               handleStudyCard
   where
     handleStudyCard :: Card -> Kerchief Deck

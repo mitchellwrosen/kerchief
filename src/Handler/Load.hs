@@ -7,7 +7,7 @@ import           Data.List (intercalate)
 import qualified Data.Set  as S
 
 import Config              (kerchiefDir)
-import Deck                (deckCards, deckDueCards)
+import Deck                (deckCards, deckDueCards, dueRatio)
 import Handler.Utils       (promptSaveCurrentDeck)
 import Kerchief            (Kerchief, loadDeck, newDeck, setDeck)
 import Utils               (askYesNo, getDirectoryContents')
@@ -35,8 +35,7 @@ handleLoadName name = do
                       createDeck
                       (return ()))
             (\deck -> do
-                let numDue = S.size (deck^.deckDueCards)
-                let totalCards = S.size (deckCards deck)
+                let (numDue, totalCards) = dueRatio deck
                 putStrLn $ 
                     "\"" ++ name ++ "\" loaded. (" ++ show numDue ++ "/" ++ show totalCards ++ " cards due)")
   where
