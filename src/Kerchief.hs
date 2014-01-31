@@ -6,7 +6,6 @@ module Kerchief
     , isDeckLoaded
     , isModified
     , loadDeck
-    , newDeck
     , runKerchief
     , saveDeck
     , setDeck
@@ -54,12 +53,6 @@ isModified = use ksModified
 setDeck :: Deck -> Kerchief ()
 setDeck deck = do
     ksDeck     .= Just deck
-    ksModified .= False
-
--- | Create a new deck with the given name.
-newDeck :: String -> Kerchief ()
-newDeck name = do
-    ksDeck     .= Just (emptyDeck name)
     ksModified .= True
 
 -- | Load the given deck, given its name. Return the deck if the load
@@ -73,7 +66,10 @@ loadDeck name = getDeck >>= \case
   where
     loadDeck' :: Kerchief (Maybe Deck)
     loadDeck' = io (readDeck name) >>=
-        maybe (return Nothing) (\d -> setDeck d >> return (Just d))
+        maybe (return Nothing) (\d -> do
+            ksDeck .= Just d
+            ksModified .= False
+            return (Just d))
 
 -- | Read a deck from file, by deck name. Also update it after reading, since
 -- this function is the single function with which decks are read from file.

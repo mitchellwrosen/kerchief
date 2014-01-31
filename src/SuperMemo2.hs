@@ -17,25 +17,18 @@ data Response
     | Response5 -- ^ Perfect response
     deriving Enum -- don't change the ordering of these, because of this
 
--- | A SuperMemoable has a Lens on both an EasinessFactor and an [Interval].
+-- | A SuperMemoable has a Lens on both an EasinessFactor and an Interval.
 -- These are implementation details and shouldn't be touched, except by
 -- 'superMemo2'. Always call 'initializeSuperMemo' once before running the
 -- algorithm.
 class SuperMemoable a where
-    smFactor    :: Lens' a EasinessFactor
-    smIntervals :: Lens' a [Interval]
-
--- | Get the current inter-repetition interval.
-smInterval :: SuperMemoable a => a -> Interval
-smInterval = smInterval' . (^.smIntervals)
-  where
-    smInterval' []    = 0
-    smInterval' (x:_) = x
+    smFactor   :: Lens' a EasinessFactor
+    smInterval :: Lens' a Interval
 
 -- | Initialize a SuperMemoable. This is necessary before running sm2 for the
 -- first time.
 initializeSuperMemo :: SuperMemoable a => a -> a
-initializeSuperMemo = (smFactor .~ 2.5) . (smIntervals .~ [])
+initializeSuperMemo = (smFactor .~ 2.5) . (smInterval .~ 0)
 
 -- | Given a Response, update a SuperMemoable. 'initializeSuperMemo' should be
 -- called before calling this function for the first time.
@@ -43,18 +36,17 @@ initializeSuperMemo = (smFactor .~ 2.5) . (smIntervals .~ [])
 -- See http://www.supermemo.com/english/ol/sm2.htm for more information.
 superMemo2 :: SuperMemoable a => Response -> a -> a
 superMemo2 (fromEnum -> q) m
-    | q < 3 = m & smIntervals .~ []
-    | otherwise = m & smIntervals .~ newIntervals
-                    & smFactor    .~ newFactor
+    | q < 3 = m & smInterval .~ 0
+    | otherwise = m & smInterval .~ (newInterval interval)
+                    & smFactor   .~ newFactor
   where
-    intervals = m^.smIntervals
-    efactor   = m^.smFactor
+    interval = m^.smInterval
+    efactor  = m^.smFactor
 
-    newIntervals :: [Interval]
-    newIntervals = case intervals of
-        []       -> [1]
-        [_]      -> [6,1]
-        xs@(x:_) -> (ceiling $ fromIntegral x * efactor) : xs
+    newInterval :: Interval -> Interval
+    newInterval 0 = 1
+    newInterval 1 = 6
+    newInterval n = ceiling $ fromIntegral n * efactor
 
     newFactor :: EasinessFactor
     newFactor = bound 1.3 2.5 newFactor'

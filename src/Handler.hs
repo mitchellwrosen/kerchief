@@ -4,6 +4,7 @@ import Kerchief.Prelude
 import Prelude hiding (putStrLn)
 
 import Handler.Add
+import Handler.AddFile
 import Handler.Decks
 import Handler.Edit
 import Handler.Exit
@@ -17,6 +18,7 @@ import Kerchief
 handleInput :: String -> Kerchief ()
 handleInput line = case words line of
     "add"    : xs -> handleAdd xs
+    "addf"   : xs -> handleAddFile xs
     "decks"  : xs -> handleDecks xs
     "edit"   : xs -> handleEdit xs
     "exit"   : xs -> handleExit xs

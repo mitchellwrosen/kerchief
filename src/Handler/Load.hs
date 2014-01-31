@@ -7,9 +7,9 @@ import           Data.List (intercalate)
 import qualified Data.Set  as S
 
 import Config              (kerchiefDir)
-import Deck                (deckCards, deckDueCards, dueRatio)
+import Deck                (deckCards, deckDueCards, dueRatio, emptyDeck)
 import Handler.Utils       (promptSaveCurrentDeck)
-import Kerchief            (Kerchief, loadDeck, newDeck, setDeck)
+import Kerchief            (Kerchief, loadDeck, setDeck)
 import Utils               (askYesNo, getDirectoryContents')
 
 handleLoad :: [String] -> Kerchief ()
@@ -41,5 +41,5 @@ handleLoadName name = do
   where
     createDeck :: Kerchief ()
     createDeck = do
-        newDeck name
+        setDeck (emptyDeck name)
         putStrLn $ "\"" ++ name ++ "\" created."

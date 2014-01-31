@@ -33,7 +33,7 @@ import Data.Time.LocalTime ()
 import Data.Time.Instances ()
 
 import SuperMemo2          ( EasinessFactor, Interval, Response(..), SuperMemoable, initializeSuperMemo, smFactor
-                           , smInterval, smIntervals, superMemo2
+                           , smInterval, superMemo2
                            )
 
 --
@@ -47,7 +47,7 @@ data Card = Card
     , _cardLastStudied    :: UTCTime
     -- For SuperMemoable instance
     , _cardEasinessFactor :: EasinessFactor
-    , _cardIntervals      :: [Interval]
+    , _cardIntervalDays   :: Interval
     } deriving Show
 makeLenses ''Card
 
@@ -66,8 +66,8 @@ instance Serialize Card where
     get = Card <$> get <*> get <*> get <*> get <*> get <*> get
 
 instance SuperMemoable Card where
-    smFactor    = cardEasinessFactor
-    smIntervals = cardIntervals
+    smFactor   = cardEasinessFactor
+    smInterval = cardIntervalDays
 
 --
 -- Creating cards
@@ -84,7 +84,7 @@ newCard front back soundUrl = do
         , _cardLastStudied    = now
         -- These two are set by initializeSuperMemo
         , _cardEasinessFactor = 0
-        , _cardIntervals      = []
+        , _cardIntervalDays   = 0
         } 
 
 -- Set a card's last-studied-time to now.
@@ -119,12 +119,9 @@ updateCard feedback = updateTimestamp . superMemo2 (feedbackToResponse feedback)
 -- Querying cards
 --
 
--- | Calculate the interval after which this 'Card' is due.
+-- | Calculate the interval after which this 'Card' is due, as a NominalDiffTime.
 cardInterval :: Card -> NominalDiffTime
-cardInterval card = realToFrac $ secondsToDiffTime (days * 86400)
-  where
-    days :: Integer
-    days = fromIntegral (smInterval card)
+cardInterval = realToFrac . secondsToDiffTime . (*86400) . fromIntegral . (^.cardIntervalDays)
 
 -- | Search a 'Card' 's contents for the given 'String'.
 containsText :: String -> Card -> Bool
