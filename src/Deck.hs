@@ -61,14 +61,14 @@ addCard card deck =
     doneCards = deck ^. deckDoneCards
 
 -- | Convenience method, combination of newCard and addCard.
-addNewCard :: String -> Maybe String -> String -> Maybe String -> Deck -> IO Deck
-addNewCard front frontSound back backSound  deck = flip addCard deck <$> newCard front frontSound back backSound
+addNewCard :: String -> String -> Maybe String -> Deck -> IO Deck
+addNewCard front back soundUrl  deck = flip addCard deck <$> newCard front back soundUrl
 
 -- | Remove a card from the deck.
 removeCard :: Card -> Deck -> Deck
 removeCard card deck =
     if S.member card (deck ^. deckDueCards)
-        then deck & deckDueCards %~ S.delete card
+        then deck & deckDueCards  %~ S.delete card
         else deck & deckDoneCards %~ S.delete card
 
 modifyCard :: Card -> (Card -> Card) -> Deck -> Deck

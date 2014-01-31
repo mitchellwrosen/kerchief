@@ -3,6 +3,7 @@
 module Handler.Study (handleStudy) where
 
 import Kerchief.Prelude
+import Prelude hiding (getLine, putStr, putStrLn)
 
 import Data.Time.Clock
 import Data.List                    (intercalate)
@@ -14,8 +15,7 @@ import           Handler.Utils      (printNoDeckLoadedError)
 import           Kerchief
 import           Mp3                (playMp3Url)
 import           Network.HTTP.Extra (getResponseBody')
-
-import Prelude hiding (getLine, putStr, putStrLn)
+import           Utils              (prompt)
 
 handleStudy :: [String] -> Kerchief ()
 handleStudy [] = getDeck >>= \case
@@ -37,38 +37,54 @@ handleStudy' shouldUpdate deck =
     handleStudyCard :: Card -> Kerchief Deck
     handleStudyCard card = do
         putStrLn (card^.cardFront)
-        putStr "Enter to continue, \"p\" to play soundbyte, \"-\" to go back. "
-        getLine >>= \case
-            "p" -> maybe (putStrLn "No soundbyte available." >> handleStudyCard card)
-                         (\url -> io (playMp3Url url) >> handleStudyCard card)
-                         (card^.cardFrontSoundUrl)
-            "-" -> return deck
-            _   -> do
+        loop1
+      where
+        loop1 = do
+            putStrLn "[f]lip | [p]lay soundbyte | [b]ack"
+            loop2
+
+        -- Loop here, entertaining as many "p"s as they want, but re-print the
+        -- options (from loop1) if they input a bad character
+        loop2 = prompt "> " >>= \case
+            "p" -> io (playCard card) >> loop2
+            "b" -> return deck
+            "f" -> do
                 putStrLn (card^.cardBack)
                 io promptFeedback >>= handleStudy' True -- Keep studying until there are no cards due.
-      where
+            _ -> loop1
+
         promptFeedback :: IO Deck
         promptFeedback = do
-            cardEasy  <- updateCard Easy card
-            cardHard  <- updateCard Hard card
-            cardWrong <- updateCard Wrong card
-            let cardEasyInterval  = cardInterval cardEasy
-            let cardHardInterval  = cardInterval cardHard
-            let cardWrongInterval = cardInterval cardWrong
+            easy  <- updateCard Easy card
+            hard  <- updateCard Hard card
+            wrong <- updateCard Wrong card
+            let easyInterval  = cardInterval easy
+            let hardInterval  = cardInterval hard
+            let wrongInterval = cardInterval wrong
 
-            putStrLn $ "1 - easy ("  ++ prettyPrintDiffTime cardEasyInterval  ++ "), " ++
-                       "2 - hard ("  ++ prettyPrintDiffTime cardHardInterval  ++ "), " ++
-                       "3 - wrong (" ++ prettyPrintDiffTime cardWrongInterval ++ ")"
+            promptFeedback' easy hard wrong easyInterval hardInterval wrongInterval
 
-            promptFeedback' cardEasy cardHard cardWrong
+        promptFeedback' :: Card -> Card -> Card -> NominalDiffTime -> NominalDiffTime -> NominalDiffTime -> IO Deck
+        promptFeedback' easy hard wrong easyInterval hardInterval wrongInterval = loop1
           where
-            promptFeedback' :: Card -> Card -> Card -> IO Deck
-            promptFeedback' easy hard wrong =
-                getLine >>= \case
-                    "1" -> return $ studyCard' easy deck
-                    "2" -> return $ studyCard' hard deck
-                    "3" -> return $ studyCard' wrong deck
-                    _   -> putStrLn "Please input 1, 2, or 3." >> promptFeedback' easy hard wrong
+            loop1 = do
+                putStrLn $ "[e]asy ("  ++ prettyPrintDiffTime easyInterval  ++ ") | " ++
+                           "[h]ard ("  ++ prettyPrintDiffTime hardInterval  ++ ") | " ++
+                           "[w]rong (" ++ prettyPrintDiffTime wrongInterval ++ ") | " ++
+                           "[p]lay soundbyte"
+                loop2
+
+            loop2 = prompt "> " >>= \case
+                "e" -> return $ studyCard' easy deck
+                "h" -> return $ studyCard' hard deck
+                "w" -> return $ studyCard' wrong deck
+                "p" -> playCard card >> loop2
+                _   -> loop1
+
+playCard :: Card -> IO ()
+playCard card = maybe (putStrLn "No soundbyte available.")
+                      (io . playMp3Url)
+                      (card^.cardSoundUrl)
 
 prettyPrintDiffTime :: NominalDiffTime -> String
 prettyPrintDiffTime = inner . ceiling

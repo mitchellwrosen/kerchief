@@ -5,11 +5,10 @@ module Card
     -- * Card type
       Card
     , cardBack
-    , cardBackSoundUrl
     , cardFront
-    , cardFrontSoundUrl
     , cardInterval
     , cardLastStudied
+    , cardSoundUrl
     , Feedback(..)
     -- * Creating cards
     , newCard
@@ -43,9 +42,8 @@ import SuperMemo2          ( EasinessFactor, Interval, Response(..), SuperMemoab
 
 data Card = Card
     { _cardFront          :: !String
-    , _cardFrontSoundUrl  :: Maybe String
     , _cardBack           :: !String
-    , _cardBackSoundUrl   :: Maybe String
+    , _cardSoundUrl       :: Maybe String
     , _cardLastStudied    :: UTCTime
     -- For SuperMemoable instance
     , _cardEasinessFactor :: EasinessFactor
@@ -58,14 +56,14 @@ data Feedback = Easy | Hard | Wrong
 
 -- Compare cards on their contents, not score or timestamp.
 instance Eq Card where
-    (Card f1 _ b1 _ _ _ _) == (Card f2 _ b2 _ _ _ _) = f1 == f2 && b1 == b2
+    (Card f1 b1 _ _ _ _) == (Card f2 b2 _ _ _ _) = f1 == f2 && b1 == b2
 
 instance Ord Card where
-    compare (Card f1 _ b1 _ _ _ _) (Card f2 _ b2 _ _ _ _) = compare f1 f2 <> compare b1 b2
+    compare (Card f1 b1 _ _ _ _) (Card f2 b2 _ _ _ _) = compare f1 f2 <> compare b1 b2
 
 instance Serialize Card where
-    put (Card a b c d e f g) = put a >> put b >> put c >> put d >> put e >> put f >> put g
-    get = Card <$> get <*> get <*> get <*> get <*> get <*> get <*> get
+    put (Card a b c d e f) = put a >> put b >> put c >> put d >> put e >> put f
+    get = Card <$> get <*> get <*> get <*> get <*> get <*> get
 
 instance SuperMemoable Card where
     smFactor    = cardEasinessFactor
@@ -76,14 +74,13 @@ instance SuperMemoable Card where
 --
 
 -- | Create a new 'Card' with the given front, back, and sound URL.
-newCard :: String -> Maybe String -> String -> Maybe String -> IO Card
-newCard front frontSound back backSound = do
+newCard :: String -> String -> Maybe String -> IO Card
+newCard front back soundUrl = do
     now <- getCurrentTime
     return . initializeSuperMemo $ Card
         { _cardFront          = front
-        , _cardFrontSoundUrl  = frontSound
         , _cardBack           = back
-        , _cardBackSoundUrl   = backSound
+        , _cardSoundUrl       = soundUrl
         , _cardLastStudied    = now
         -- These two are set by initializeSuperMemo
         , _cardEasinessFactor = 0
@@ -100,13 +97,10 @@ updateTimestamp card = (\time -> card & cardLastStudied .~ time) <$> getCurrentT
 
 -- | Reverse a 'Card' 's back and front.
 reverseCard :: Card -> Card
-reverseCard card = card & cardFront         .~ (card^.cardBack)
-                        & cardFrontSoundUrl .~ (card^.cardBackSoundUrl)
-                        & cardBack          .~ (card^.cardFront)
-                        & cardBackSoundUrl  .~ (card^.cardFrontSoundUrl)
+reverseCard card = card & cardFront .~ (card^.cardBack)
+                        & cardBack  .~ (card^.cardFront)
 
 -- | Set a 'Card' 's front/back contents.
--- TODO: does this make sense with new front/back url?
 setCardContents :: String -> String -> Card -> Card
 setCardContents front back card = card & cardFront .~ front & cardBack .~ back
 
@@ -134,7 +128,7 @@ cardInterval card = realToFrac $ secondsToDiffTime (days * 86400)
 
 -- | Search a 'Card' 's contents for the given 'String'.
 containsText :: String -> Card -> Bool
-containsText str (Card front _ back _ _ _ _) = isInfixOf str front || isInfixOf str back
+containsText str (Card front back _ _ _ _) = isInfixOf str front || isInfixOf str back
 
 -- | Check if this 'Card' is due for studying.
 isDue :: Card -> IO Bool
@@ -144,4 +138,4 @@ isDue card = do
 
 -- | Alternative Show instance that shows front/back contents.
 showCard :: Card -> String
-showCard (Card front _ back _ _ _ _) = "[Front] " ++ front ++ " [Back] " ++ back
+showCard (Card front back _ _ _ _) = "[Front] " ++ front ++ " [Back] " ++ back
