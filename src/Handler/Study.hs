@@ -13,7 +13,7 @@ import qualified Data.Set.Extra as S
 import           Deck
 import           Handler.Utils      (printNoDeckLoadedError)
 import           Kerchief
-import           Mp3                (playMp3Url)
+import           Mp3                (playMp3)
 import           Network.HTTP.Extra (getResponseBody')
 import           Utils              (prompt)
 
@@ -46,25 +46,25 @@ handleStudy' shouldUpdate deck =
         -- Loop here, entertaining as many "p"s as they want, but re-print the
         -- options (from loop1) if they input a bad character
         loop2 = prompt "> " >>= \case
-            "p" -> io (playCard card) >> loop2
+            "p" -> playCard card >> loop2
             "b" -> return deck
             "f" -> do
                 putStrLn (card^.cardBack)
-                io promptFeedback >>= handleStudy' True -- Keep studying until there are no cards due.
+                promptFeedback >>= handleStudy' True -- Keep studying until there are no cards due.
             _ -> loop1
 
-        promptFeedback :: IO Deck
+        promptFeedback :: Kerchief Deck
         promptFeedback = do
-            easy  <- updateCard Easy card
-            hard  <- updateCard Hard card
-            wrong <- updateCard Wrong card
+            easy  <- io $ updateCard Easy card
+            hard  <- io $ updateCard Hard card
+            wrong <- io $ updateCard Wrong card
             let easyInterval  = cardInterval easy
             let hardInterval  = cardInterval hard
             let wrongInterval = cardInterval wrong
 
             promptFeedback' easy hard wrong easyInterval hardInterval wrongInterval
 
-        promptFeedback' :: Card -> Card -> Card -> NominalDiffTime -> NominalDiffTime -> NominalDiffTime -> IO Deck
+        promptFeedback' :: Card -> Card -> Card -> NominalDiffTime -> NominalDiffTime -> NominalDiffTime -> Kerchief Deck
         promptFeedback' easy hard wrong easyInterval hardInterval wrongInterval = loop1
           where
             loop1 = do
@@ -74,16 +74,16 @@ handleStudy' shouldUpdate deck =
                            "[p]lay soundbyte"
                 loop2
 
-            loop2 = prompt "> " >>= \case
+            loop2 = io (prompt "> ") >>= \case
                 "e" -> return $ studyCard' easy deck
                 "h" -> return $ studyCard' hard deck
                 "w" -> return $ studyCard' wrong deck
                 "p" -> playCard card >> loop2
                 _   -> loop1
 
-playCard :: Card -> IO ()
+playCard :: Card -> Kerchief ()
 playCard card = maybe (putStrLn "No soundbyte available.")
-                      (io . playMp3Url)
+                      playMp3
                       (card^.cardSoundUrl)
 
 prettyPrintDiffTime :: NominalDiffTime -> String

@@ -3,6 +3,9 @@
 module Kerchief
     ( Kerchief
     , getDeck
+    , getDecksDir
+    , getKerchiefDir
+    , getSoundbytesDir
     , isDeckLoaded
     , isModified
     , loadDeck
@@ -13,18 +16,23 @@ module Kerchief
 
 import           Control.Applicative
 import           Control.Lens
+import           Control.Monad.Reader
 import           Control.Monad.State       (MonadState)
 import           Control.Monad.Trans       (MonadIO)
 import           Control.Monad.Trans.State
 import qualified Data.ByteString           as BS
 import           Data.Serialize            (encode, decode)
+import           System.Directory          (getHomeDirectory)
 import           System.FilePath           ((</>))
 import           System.IO
 
-import           Config                    (kerchiefDir)
 import           Deck
 import           Kerchief.Prelude          (io)
 import           Utils                     (catchNothing, eitherToMaybe, whenJust)
+
+data KerchiefConfig = KConfig
+    { kcDir :: FilePath
+    }
 
 data KerchiefState = KState
     { _ksDeck     :: Maybe Deck
@@ -33,14 +41,31 @@ data KerchiefState = KState
 makeLenses ''KerchiefState
 
 newtype Kerchief a =
-    Kerchief { unKerchief :: StateT KerchiefState IO a }
-        deriving (Functor, Applicative, Monad, MonadIO, MonadState KerchiefState)
+    Kerchief { unKerchief :: ReaderT KerchiefConfig (StateT KerchiefState IO) a }
+        deriving (Functor, Applicative, Monad, MonadIO, MonadState KerchiefState, MonadReader KerchiefConfig)
 
 runKerchief :: Kerchief a -> IO a
-runKerchief = (`evalStateT` KState Nothing False) . unKerchief
+runKerchief (Kerchief r) = do
+    config <- initKerchiefConfig
+    evalStateT (runReaderT r config) initKerchiefState
+
+initKerchiefState :: KerchiefState
+initKerchiefState = KState Nothing False
+
+initKerchiefConfig :: IO KerchiefConfig
+initKerchiefConfig = KConfig . (</> ".kerchief") <$> getHomeDirectory
 
 isDeckLoaded :: Kerchief Bool
 isDeckLoaded = maybe False (const True) <$> getDeck
+
+getKerchiefDir :: Kerchief FilePath
+getKerchiefDir = asks kcDir
+
+getDecksDir :: Kerchief FilePath
+getDecksDir = (</> "decks") <$> getKerchiefDir
+
+getSoundbytesDir :: Kerchief FilePath
+getSoundbytesDir = (</> "soundbytes") <$> getKerchiefDir
 
 -- | Get the current deck.
 getDeck :: Kerchief (Maybe Deck)
@@ -65,7 +90,7 @@ loadDeck name = getDeck >>= \case
         | otherwise              -> loadDeck'
   where
     loadDeck' :: Kerchief (Maybe Deck)
-    loadDeck' = io (readDeck name) >>=
+    loadDeck' = readDeck name >>=
         maybe (return Nothing) (\d -> do
             ksDeck .= Just d
             ksModified .= False
@@ -73,11 +98,10 @@ loadDeck name = getDeck >>= \case
 
 -- | Read a deck from file, by deck name. Also update it after reading, since
 -- this function is the single function with which decks are read from file.
-readDeck :: String -> IO (Maybe Deck)
-readDeck name = do
-    kerchiefDir
-        >>= catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
-        >>= maybe (return Nothing) (fmap Just . updateDeck)
+readDeck :: String -> Kerchief (Maybe Deck)
+readDeck name = getDecksDir
+    >>= io . catchNothing . fmap (eitherToMaybe . decode) . BS.readFile . (</> name)
+    >>= maybe (return Nothing) (fmap Just . io . updateDeck)
 
 -- | Save the current deck to file, creating the file first if it doesn't exist.
 -- If there is no current deck, do nothing.
@@ -86,6 +110,6 @@ saveDeck = getDeck >>= whenJust saveDeck'
   where
     saveDeck' :: Deck -> Kerchief ()
     saveDeck' deck = do
-        path <- (</> deck^.deckName) <$> io kerchiefDir
+        path <- (</> deck^.deckName) <$> getDecksDir
         io $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
         ksModified .= False

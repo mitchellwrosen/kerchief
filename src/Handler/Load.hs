@@ -6,21 +6,20 @@ import Prelude hiding (putStr, putStrLn)
 import           Data.List (intercalate)
 import qualified Data.Set  as S
 
-import Config              (kerchiefDir)
 import Deck                (deckCards, deckDueCards, dueRatio, emptyDeck)
 import Handler.Utils       (promptSaveCurrentDeck)
-import Kerchief            (Kerchief, loadDeck, setDeck)
+import Kerchief            (Kerchief, getDecksDir, loadDeck, setDeck)
 import Utils               (askYesNo, getDirectoryContents')
 
 handleLoad :: [String] -> Kerchief ()
-handleLoad ["--help"]   = io printLoadUsage
+handleLoad ["--help"]   = printLoadUsage
 handleLoad [name]       = handleLoadName name
-handleLoad _            = io printLoadUsage
+handleLoad _            = printLoadUsage
 
-printLoadUsage :: IO ()
+printLoadUsage :: Kerchief ()
 printLoadUsage = do
     putStr "Available decks: "
-    kerchiefDir >>= getDirectoryContents' >>= putStrLn . intercalate ", "
+    getDecksDir >>= io . getDirectoryContents' >>= putStrLn . intercalate ", "
     mapM_ putStrLn
         [ "Usage: load deck"
         , "load (or create) deck from file"

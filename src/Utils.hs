@@ -2,11 +2,14 @@
 
 module Utils where
 
-import Control.Exception   (SomeException, catch)
-import Control.Monad       (foldM, unless)
-import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Foldable       (Foldable, foldl)
-import System.Directory    (getDirectoryContents)
+import           Control.Applicative ((<$>))
+import           Control.Exception   (SomeException, catch)
+import           Control.Monad       (foldM, unless)
+import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.ByteString     (ByteString)
+import qualified Data.ByteString     as BS
+import           Data.Foldable       (Foldable, foldl)
+import           System.Directory    (getDirectoryContents)
 
 import Kerchief.Prelude (getLine, putStr, putStrLn)
 import Prelude hiding (foldl, getLine, putStr, putStrLn)
@@ -81,3 +84,6 @@ unless' = flip unless
 whenJust :: Monad m => (a -> m b) -> Maybe a -> m ()
 whenJust _ Nothing  = return ()
 whenJust f (Just a) = f a >> return ()
+
+safeReadFile :: FilePath -> IO (Maybe ByteString)
+safeReadFile path = catchNothing (Just <$> BS.readFile path)

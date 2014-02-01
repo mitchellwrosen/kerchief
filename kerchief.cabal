@@ -17,7 +17,6 @@ cabal-version:       >=1.10
 executable kerchief
   main-is: Main.hs
   other-modules: Card
-               , Config
                , Data.Set.Extra
                , Data.Time.Instances
                , Deck

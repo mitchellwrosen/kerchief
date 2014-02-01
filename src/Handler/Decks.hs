@@ -5,9 +5,8 @@ import Prelude hiding (putStrLn)
 
 import Data.List (intercalate)
 
-import Config    (kerchiefDir)
-import Kerchief  (Kerchief)
+import Kerchief  (Kerchief, getDecksDir)
 import Utils     (getDirectoryContents')
 
 handleDecks :: [String] -> Kerchief ()
-handleDecks _ = io $ kerchiefDir >>= getDirectoryContents' >>= putStrLn . intercalate " "
+handleDecks _ = getDecksDir >>= io . getDirectoryContents' >>= putStrLn . intercalate " "

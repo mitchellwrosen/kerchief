@@ -5,23 +5,31 @@ module Main where
 import Kerchief.Prelude
 import Prelude hiding (putStrLn)
 
-import System.IO        (BufferMode(..), hSetBuffering, stdout)
-import System.Directory (createDirectoryIfMissing)
+import Control.Monad.Reader (asks)
+import System.IO            (BufferMode(..), hSetBuffering, stdout)
+import System.Directory     (createDirectoryIfMissing)
 
-import Config           (kerchiefDir)
-import Deck             (deckName)
-import Handler          (handleInput)
-import Kerchief         (getDeck, runKerchief)
-import Utils            (prompt)
+import Deck                 (deckName)
+import Handler              (handleInput)
+import Kerchief             (Kerchief, getDecksDir, getKerchiefDir, getSoundbytesDir, getDeck, runKerchief)
+import Utils                (prompt)
 
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    kerchiefDir >>= createDirectoryIfMissing False
     printHelp
-    runKerchief $ forever $ do
-        deckName <- maybe "" (^.deckName) <$> getDeck
-        io (prompt $ deckName ++ "> ") >>= handleInput
+    runKerchief $ do
+        makeDirectories
+        forever $ do
+            deckName <- maybe "" (^.deckName) <$> getDeck
+            io (prompt $ deckName ++ "> ") >>= handleInput
+
+makeDirectories :: Kerchief ()
+makeDirectories = do
+    kerchiefDir   <- getKerchiefDir
+    decksDir      <- getDecksDir
+    soundbytesDir <- getSoundbytesDir
+    mapM_ (io . createDirectoryIfMissing False) [kerchiefDir, decksDir, soundbytesDir]
 
 printHelp :: IO ()
 printHelp = mapM_ putStrLn
