@@ -2,12 +2,14 @@
 
 module Handler.Exit (handleExit) where
 
-import Control.Monad.Trans (MonadIO, liftIO)
+import Kerchief.Prelude
+import Prelude hiding (putStrLn)
+
 import System.Exit         (exitSuccess)
 
 import Handler.Utils       (promptSaveCurrentDeck)
-import Kerchief
+import Kerchief            (Kerchief)
 
 handleExit :: [String] -> Kerchief ()
-handleExit [] = promptSaveCurrentDeck >> liftIO exitSuccess
-handleExit _ = liftIO $ putStrLn "Usage: exit"
+handleExit [] = promptSaveCurrentDeck >> io exitSuccess
+handleExit _ = putStrLn "Usage: exit"

@@ -2,20 +2,18 @@
 
 module Utils where
 
-import           Control.Applicative ((<$>))
+import Kerchief.Prelude
+import Prelude hiding (foldl, getLine, putStr, putStrLn)
+
 import           Control.Exception   (SomeException, catch)
-import           Control.Monad       (foldM, unless)
-import           Control.Monad.Trans (MonadIO, liftIO)
+import           Control.Monad.Trans (MonadIO)
 import           Data.ByteString     (ByteString)
 import qualified Data.ByteString     as BS
 import           Data.Foldable       (Foldable, foldl)
 import           System.Directory    (getDirectoryContents)
 
-import Kerchief.Prelude (getLine, putStr, putStrLn)
-import Prelude hiding (foldl, getLine, putStr, putStrLn)
-
 askYesNo :: MonadIO m => String -> m a -> m a -> m a
-askYesNo s yes no = liftIO (prompt s) >>= \case
+askYesNo s yes no = io (prompt s) >>= \case
     "y"   -> yes
     "Y"   -> yes
     "yes" -> yes
