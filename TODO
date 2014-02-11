@@ -7,3 +7,4 @@
    in downloading and caching an error message. actually downloading the mp3
    then requires the user to manually rm the cached file
 - external config file (kerchief dir, min/max interval, etc)
+- handle rmdeck IO fail (permissions error, etc)

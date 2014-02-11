@@ -29,6 +29,7 @@ executable kerchief
                , Handler.Load
                , Handler.Print
                , Handler.Remove
+               , Handler.RemoveDeck
                , Handler.Save
                , Handler.Study
                , Handler.Utils

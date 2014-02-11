@@ -11,6 +11,7 @@ import Handler.Exit
 import Handler.Load
 import Handler.Print
 import Handler.Remove
+import Handler.RemoveDeck
 import Handler.Save
 import Handler.Study
 import Kerchief
@@ -26,7 +27,7 @@ handleInput line = case words line of
     "print"  : xs -> handlePrint xs
     "rename" : xs -> putStrLn "TODO"
     "rm"     : xs -> handleRemove xs
-    "rmdeck" : xs -> putStrLn "TODO"
+    "rmdeck" : xs -> handleRemoveDeck xs
     "save"   : xs -> handleSave xs
     "study"  : xs -> handleStudy xs
     _             -> putStrLn "Unknown command"

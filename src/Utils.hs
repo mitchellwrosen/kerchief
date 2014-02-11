@@ -79,7 +79,7 @@ reads' s = case reads s of
 unless' :: Monad m => m () -> Bool -> m ()
 unless' = flip unless
 
-whenJust :: Monad m => (a -> m b) -> Maybe a -> m ()
+whenJust :: (Functor m, Monad m) => (a -> m b) -> Maybe a -> m ()
 whenJust _ Nothing  = return ()
 whenJust f (Just a) = void (f a)
 
