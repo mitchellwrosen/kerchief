@@ -23,5 +23,5 @@ hSilence' :: [Handle] -> IO a -> IO a
 hSilence' hs action = do
     bufferings <- mapM hGetBuffering hs
     result <- hSilence hs action
-    mapM_ (\(h,b) -> hSetBuffering h b) (zip hs bufferings)
+    mapM_ (uncurry hSetBuffering) (zip hs bufferings)
     return result

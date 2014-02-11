@@ -49,8 +49,8 @@ partitionM p = foldM (select p) ([],[])
     select :: Monad m => (a -> m Bool) -> ([a],[a]) -> a -> m ([a],[a])
     select q (ts,fs) x =
         ifM (q x)
-            (return ((x:ts),fs))
-            (return (ts,(x:fs)))
+            (return (x:ts,fs))
+            (return (ts,x:fs))
 
 -- | Print each element of a Foldable, prepended by a number (starting at 1).
 printNumbered :: (Show a, Foldable t) => t a -> IO ()
@@ -81,7 +81,7 @@ unless' = flip unless
 
 whenJust :: Monad m => (a -> m b) -> Maybe a -> m ()
 whenJust _ Nothing  = return ()
-whenJust f (Just a) = f a >> return ()
+whenJust f (Just a) = void (f a)
 
 safeReadFile :: FilePath -> IO (Maybe ByteString)
 safeReadFile path = catchNothing (Just <$> BS.readFile path)

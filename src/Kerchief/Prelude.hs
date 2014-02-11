@@ -3,14 +3,12 @@ module Kerchief.Prelude
     , getLine
     , putStr
     , putStrLn
-    , module Control.Applicative
-    , module Control.Monad
-    , module Control.Lens
+    , module REEXPORT
     ) where
 
-import Control.Applicative
-import Control.Monad hiding (mapM_)
-import Control.Lens
+import Control.Applicative as REEXPORT
+import Control.Monad       as REEXPORT hiding (mapM_)
+import Control.Lens        as REEXPORT
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Prelude hiding (getLine, putStr, putStrLn)

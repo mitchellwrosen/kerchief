@@ -24,6 +24,7 @@ import           Control.Monad.Trans       (MonadIO)
 import           Control.Monad.Trans.State
 import           Data.ByteString           (ByteString)
 import qualified Data.ByteString           as BS
+import           Data.Maybe                (isJust)
 import           Data.Serialize            (encode, decode)
 import           System.Directory          (getHomeDirectory)
 import           System.FilePath           ((</>))
@@ -59,7 +60,7 @@ initKerchiefConfig :: IO KerchiefConfig
 initKerchiefConfig = KConfig . (</> ".kerchief") <$> getHomeDirectory
 
 isDeckLoaded :: Kerchief Bool
-isDeckLoaded = maybe False (const True) <$> getDeck
+isDeckLoaded = isJust <$> getDeck
 
 getKerchiefDir :: Kerchief FilePath
 getKerchiefDir = asks kcDir

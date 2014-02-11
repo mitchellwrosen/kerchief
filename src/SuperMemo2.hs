@@ -37,7 +37,7 @@ initializeSuperMemo = (smFactor .~ 2.5) . (smInterval .~ 0)
 superMemo2 :: SuperMemoable a => Response -> a -> a
 superMemo2 (fromEnum -> q) m
     | q < 3 = m & smInterval .~ 0
-    | otherwise = m & smInterval .~ (newInterval interval)
+    | otherwise = m & smInterval .~ newInterval interval
                     & smFactor   .~ newFactor
   where
     interval = m^.smInterval
