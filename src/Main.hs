@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -36,11 +36,11 @@ printHelp = mapM_ putStrLn
     [ "Kerchief by MitchellSalad"
     , "+-----------------------------------------------+"
     , "| add     - add a card to the current deck      |"
-    , "| addf    - add cards from a file ('batch add') |"
+    , "| addf    - add cards from a file (batch add)   |"
     , "| edit    - edit a card in the current deck     |"
-    , "| exit    - exit (will prompt save)             |"
+    , "| exit    - exit program                        |"
     , "| decks   - show the available decks            |"
-    , "| load    - load a deck                         |"
+    , "| load    - load (or create) a deck             |"
     , "| help    - print this help                     |"
     , "| print   - print the current deck              |"
     , "| rename  - rename a deck                       |"

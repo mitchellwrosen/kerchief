@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handler.Add (handleAdd) where
 
 import Kerchief.Prelude
@@ -44,7 +42,7 @@ handleAddWord' word deck = io (lookupWord word) >>= selectEntry
         printNumberedWith (\(Entry word def mpos phonetic _) -> 
             word ++ " " ++ phonetic ++ maybe " " (\pos -> " (" ++ pos ++ ") ") mpos ++ def) es
         putStrLn "Which definition? (\"-\" to go back)"
-        getLine >>= \case
+        getLine >>= \ms -> case ms of
             "-" -> putStrLn "No card added."
             s   -> maybe badInput selectEntry' (reads' s)
       where

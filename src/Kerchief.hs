@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TemplateHaskell #-}
 
 module Kerchief
     ( Kerchief
@@ -86,7 +86,7 @@ setDeck deck = do
 -- | Load the given deck, given its name. Return the deck if the load
 -- was successful (i.e. does the deck exist?).
 loadDeck :: String -> Kerchief (Maybe Deck)
-loadDeck name = getDeck >>= \case
+loadDeck name = getDeck >>= \mdeck -> case mdeck of
     Nothing -> loadDeck'
     Just deck
         | name == deck^.deckName -> return (Just deck)

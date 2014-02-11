@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handler.Edit (handleEdit) where
 
 import Kerchief.Prelude
@@ -46,7 +44,7 @@ promptEditCards cards = do
     putStrLn "Matching cards found:"
     printNumberedWith showCard cards
     putStr "Edit which card? (\"-\" to go back, \"all\" to edit all) "
-    getLine >>= \case
+    getLine >>= \ms -> case ms of
         "-"   -> putStrLn "No cards edited." >> return id
         "all" -> foldlM (\f card -> (f .) <$> promptEditCard card) id cards
         s     -> maybe (putStrLn "Please pick a valid integer." >> promptEditCards cards)

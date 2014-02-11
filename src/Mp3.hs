@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Mp3 (playMp3Bytes) where
 
 import Kerchief.Prelude

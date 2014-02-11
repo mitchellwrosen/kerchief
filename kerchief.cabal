@@ -37,8 +37,7 @@ executable kerchief
                , Network.HTTP.Extra
                , SuperMemo2
                , Utils
-  other-extensions: LambdaCase
-                  , ScopedTypeVariables
+  other-extensions: ScopedTypeVariables
                   , ViewPatterns
                   , TemplateHaskell
                   , GeneralizedNewtypeDeriving

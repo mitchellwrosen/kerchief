@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handler.Study (handleStudy) where
 
 import Kerchief.Prelude
@@ -20,7 +18,7 @@ import           Network.HTTP.Extra (getResponseBody')
 import           Utils              (prompt)
 
 handleStudy :: [String] -> Kerchief ()
-handleStudy [] = getDeck >>= \case
+handleStudy [] = getDeck >>= \mdeck -> case mdeck of
     Nothing -> printNoDeckLoadedError
     Just deck -> handleStudy' True deck >>= setDeck
 handleStudy _  = putStrLn "Usage: study"
@@ -47,7 +45,7 @@ handleStudy' shouldUpdate deck =
 
         -- Loop here, entertaining as many "p"s as they want, but re-print the
         -- options (from loop1) if they input a bad character
-        loop2 = prompt "> " >>= \case
+        loop2 = prompt "> " >>= \s -> case s of 
             "p" -> playCard card >> loop2
             "b" -> return deck
             "f" -> do
@@ -76,7 +74,7 @@ handleStudy' shouldUpdate deck =
                            "[p]lay soundbyte"
                 loop2
 
-            loop2 = io (prompt "> ") >>= \case
+            loop2 = io (prompt "> ") >>= \s -> case s of 
                 "e" -> return $ studyCard' easy deck
                 "h" -> return $ studyCard' hard deck
                 "w" -> return $ studyCard' wrong deck

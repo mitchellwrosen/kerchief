@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Utils where
 
@@ -13,7 +13,7 @@ import           Data.Foldable       (Foldable, foldl)
 import           System.Directory    (getDirectoryContents)
 
 askYesNo :: MonadIO m => String -> m a -> m a -> m a
-askYesNo s yes no = io (prompt s) >>= \case
+askYesNo s yes no = io (prompt s) >>= \s -> case s of
     "y"   -> yes
     "Y"   -> yes
     "yes" -> yes

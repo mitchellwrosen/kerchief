@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handler.Exit (handleExit) where
 
 import Kerchief.Prelude

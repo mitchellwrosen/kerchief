@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handler.Remove (handleRemove) where
 
 import Kerchief.Prelude
@@ -45,7 +43,7 @@ promptRemoveCards cards = do
     putStrLn "Matching cards found:"
     printNumberedWith showCard cards
     putStr "Remove which card? (\"-\" to go back, \"all\" to remove all) "
-    getLine >>= \case
+    getLine >>= \ms -> case ms of
         "-"   -> putStrLn "No cards removed." >> return id
         "all" -> foldlM (\f card -> (f .) <$> doRemoveCard card) id cards
         s     -> maybe (putStrLn "Please pick a valid integer." >> promptRemoveCards cards)
