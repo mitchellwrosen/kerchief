@@ -36,37 +36,39 @@ handleAddWord :: String -> Kerchief ()
 handleAddWord word = getDeck >>= maybe printNoDeckLoadedError (handleAddWord' word)
 
 handleAddWord' :: String -> Deck -> Kerchief ()
-handleAddWord' word deck = io (lookupWord word) >>= selectEntry >>= setDeck . ($ deck)
+handleAddWord' word deck = io (lookupWord word) >>= selectEntry
   where
-    selectEntry :: [Entry] -> Kerchief (Deck -> Deck)
-    selectEntry [] = putStrLn "No definition found." >> return id
+    selectEntry :: [Entry] -> Kerchief ()
+    selectEntry [] = putStrLn "No definition found."
     selectEntry es = do
         printNumberedWith (\(Entry word def mpos phonetic _) -> 
             word ++ " " ++ phonetic ++ maybe " " (\pos -> " (" ++ pos ++ ") ") mpos ++ def) es
         putStrLn "Which definition? (\"-\" to go back)"
         getLine >>= \case
-            "-" -> putStrLn "No card added." >> return id
+            "-" -> putStrLn "No card added."
             s   -> maybe badInput selectEntry' (reads' s)
       where
-        selectEntry' :: Int -> Kerchief (Deck -> Deck)
+        selectEntry' :: Int -> Kerchief ()
         selectEntry' n
             | n < 1 || n > length es = badInput
-            | otherwise = doAddCard (entryToFront entry) (entryDefinition entry) (entrySoundUrl entry)
+            | otherwise = doAddCard (entryToFront entry) (entryDefinition entry) (entrySoundUrl entry) deck
           where
             entry :: Entry
             entry = es !! (n-1)
 
-        badInput :: Kerchief (Deck -> Deck)
-        badInput = putStrLn "Please pick a valid integer." >> selectEntry es
+        badInput :: Kerchief ()
+        badInput = putStrLn "Please pick a valid integer."
 
-doAddCard :: String -> String -> Maybe String -> Kerchief (Deck -> Deck)
-doAddCard front back soundUrl = do
+doAddCard :: String -> String -> Maybe String -> Deck -> Kerchief ()
+doAddCard front back soundUrl deck = do
     card <- io $ newCard front back soundUrl
     putStrLn "Card added."
-    (addCard card .) <$>
-        askYesNo "Add reverse card as well? (y/n) "
-                 (return $ addCard (reverseCard card))
-                 (return id)
+
+    let deck' = addCard card deck
+    askYesNo "Add reverse card as well? (y/n) "
+             (return $ addCard (reverseCard card) deck') -- Either add two cards to the deck...
+             (return                              deck') -- ...or only one
+        >>= setDeck
 
 handleAddFrontBack :: String -> Kerchief ()
 handleAddFrontBack line = getDeck >>= maybe printNoDeckLoadedError (handleAddFrontBack' line)
@@ -78,7 +80,7 @@ handleAddFrontBack' line deck = either left right . parse parseFrontBack "" $ li
     left _ = io printAddUsage
 
     right :: (String, String) -> Kerchief ()
-    right (front, back) = doAddCard front back Nothing >>= setDeck . ($ deck)
+    right (front, back) = doAddCard front back Nothing deck
 
 parseFrontBack :: Parser (String, String)
 parseFrontBack = (,) <$> parseQuotedString <*> (spaces *> parseQuotedString)
