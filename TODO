@@ -1,7 +1,9 @@
-- play soundbytes
 - publish/download
 - better persistence
 - handle: deck file bad format
 - remove deck
 - rename deck
-- cycle wrong cards in current study session
+- bugs when no internet connection. for example, playing and mp3 will result
+   in downloading and caching an error message. actually downloading the mp3
+   then requires the user to manually rm the cached file
+- add card -> no -> exit (shouldnt prompt save)

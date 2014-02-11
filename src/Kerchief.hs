@@ -9,8 +9,10 @@ module Kerchief
     , isDeckLoaded
     , isModified
     , loadDeck
+    , readSoundbyte
     , runKerchief
     , saveDeck
+    , saveSoundbyte
     , setDeck
     ) where
 
@@ -20,6 +22,7 @@ import           Control.Monad.Reader
 import           Control.Monad.State       (MonadState)
 import           Control.Monad.Trans       (MonadIO)
 import           Control.Monad.Trans.State
+import           Data.ByteString           (ByteString)
 import qualified Data.ByteString           as BS
 import           Data.Serialize            (encode, decode)
 import           System.Directory          (getHomeDirectory)
@@ -28,7 +31,7 @@ import           System.IO
 
 import           Deck
 import           Kerchief.Prelude          (io)
-import           Utils                     (catchNothing, eitherToMaybe, whenJust)
+import           Utils                     (catchNothing, eitherToMaybe, safeReadFile, whenJust)
 
 data KerchiefConfig = KConfig
     { kcDir :: FilePath
@@ -113,3 +116,18 @@ saveDeck = getDeck >>= whenJust saveDeck'
         path <- (</> deck^.deckName) <$> getDecksDir
         io $ withBinaryFile path WriteMode (`BS.hPut` encode deck)
         ksModified .= False
+
+-- | Save a soundbyte to disk, given its url and contents (mp3 binary).
+saveSoundbyte :: String -> ByteString -> Kerchief ()
+saveSoundbyte url bytes = getSoundbytePath url >>= io . flip BS.writeFile bytes
+
+-- | Read a soundbyte from disk, given its url.
+readSoundbyte :: String -> Kerchief (Maybe ByteString)
+readSoundbyte url = getSoundbytePath url >>= io . safeReadFile
+
+-- | Given a url, get its soundbyte path (replace '/' with '-')
+getSoundbytePath :: String -> Kerchief FilePath
+getSoundbytePath = getSoundbytePath' . map (\c -> if c == '/' then '-' else c)
+  where
+    getSoundbytePath' :: String -> Kerchief FilePath
+    getSoundbytePath' url = (</> url) <$> getSoundbytesDir

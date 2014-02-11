@@ -5,15 +5,17 @@ module Handler.Study (handleStudy) where
 import Kerchief.Prelude
 import Prelude hiding (getLine, putStr, putStrLn)
 
-import Data.Time.Clock
-import Data.List                    (intercalate)
+import           Data.ByteString    (ByteString)
+import qualified Data.ByteString    as BS
+import           Data.Time.Clock
+import           Data.List          (intercalate)
 
 import           Card
-import qualified Data.Set.Extra as S
+import qualified Data.Set.Extra     as S
 import           Deck
 import           Handler.Utils      (printNoDeckLoadedError)
 import           Kerchief
-import           Mp3                (playMp3)
+import           Mp3                (playMp3Bytes)
 import           Network.HTTP.Extra (getResponseBody')
 import           Utils              (prompt)
 
@@ -83,8 +85,17 @@ handleStudy' shouldUpdate deck =
 
 playCard :: Card -> Kerchief ()
 playCard card = maybe (putStrLn "No soundbyte available.")
-                      playMp3
+                      attemptToPlayMp3
                       (card^.cardSoundUrl)
+  where
+    attemptToPlayMp3 :: String -> Kerchief ()
+    attemptToPlayMp3 url = readSoundbyte url >>= maybe downloadAndAttemptToPlayMp3 (io . playMp3Bytes)
+      where
+        downloadAndAttemptToPlayMp3 :: Kerchief ()
+        downloadAndAttemptToPlayMp3 = io (getResponseBody' url) >>= maybe (return ()) (saveAndPlayMp3 url)
+
+        saveAndPlayMp3 :: String -> ByteString -> Kerchief ()
+        saveAndPlayMp3 url bytes = saveSoundbyte url bytes >> io (playMp3Bytes bytes)
 
 prettyPrintDiffTime :: NominalDiffTime -> String
 prettyPrintDiffTime = inner . ceiling

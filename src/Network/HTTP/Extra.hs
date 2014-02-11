@@ -1,21 +1,27 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase, ViewPatterns #-}
 
 module Network.HTTP.Extra 
-    ( ConnError
-    , getResponseBody'
+    ( getResponseBody'
+    , simpleHTTP'
     ) where
 
-import Control.Applicative
 import Network.HTTP
 import Network.Stream
 import Network.URI
 
--- | Get-request and get-response all in one.
-getResponseBody' :: forall a. HStream a => String -> IO (Maybe a)
-getResponseBody' = maybe (return Nothing) withURI . parseURI
+-- | Get-request and get-response all in one. Returns Nothing if there was a
+-- ConnError, or if there was a code returned other than 400.
+simpleHTTP' :: HStream a => String -> IO (Maybe (Response a))
+simpleHTTP' = maybe (return Nothing) withURI . parseURI
   where
-    withURI :: URI -> IO (Maybe a)
-    withURI uri = either (const Nothing) Just <$> withURI' uri
+    withURI :: HStream a => URI -> IO (Maybe (Response a))
+    withURI uri = simpleHTTP (defaultGETRequest_ uri) >>= \case
+        Left _ -> return Nothing
+        Right response -> case rspCode response of
+            (4,0,0) -> return (Just response)
+            _       -> return Nothing
 
-    withURI' :: HStream a => URI -> IO (Either ConnError a)
-    withURI' uri = fmap rspBody <$> simpleHTTP (defaultGETRequest_ uri)
+-- | Get-request and get-response-body all in one. Returns Nothing if there was
+-- a ConnError, or if there was a code returned other than 400.
+getResponseBody' :: HStream a => String -> IO (Maybe a)
+getResponseBody' = fmap (fmap rspBody) . simpleHTTP'

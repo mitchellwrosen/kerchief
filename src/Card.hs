@@ -85,7 +85,7 @@ newCard front back soundUrl = do
         -- These two are set by initializeSuperMemo
         , _cardEasinessFactor = 0
         , _cardIntervalDays   = 0
-        } 
+        }
 
 -- Set a card's last-studied-time to now.
 updateTimestamp :: Card -> IO Card
@@ -110,6 +110,7 @@ updateCard :: Feedback -> Card -> IO Card
 updateCard feedback = updateTimestamp . superMemo2 (feedbackToResponse feedback)
   where
     -- Translate a Feedback (defined here) to a Response (SuperMemo)
+    -- Arbitrarily map Easy, Hard, Wrong to 5, 3, 0.
     feedbackToResponse :: Feedback -> Response
     feedbackToResponse Easy  = Response5
     feedbackToResponse Hard  = Response3
